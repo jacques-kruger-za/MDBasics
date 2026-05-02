@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MDBasics</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="app-mark" aria-hidden="true">M</div>
+        <nav class="menu" aria-label="Application menu">
+          <button data-menu="file">File</button>
+          <button data-menu="edit">Edit</button>
+          <button data-menu="view">View</button>
+          <button data-menu="settings">Settings</button>
+        </nav>
+        <div class="view-toggle title-toggle" role="group" aria-label="Editor mode">
+          <button id="codeModeButton" class="active" title="Code view" aria-label="Code view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
+          </button>
+          <button id="renderModeButton" title="Rendered editor" aria-label="Rendered editor">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button id="diffModeButton" title="Diff view" aria-label="Diff view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h7M6 16h7M17 6v12M15 8h4M15 16h4"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="menuPanel" class="menu-panel" hidden></div>
+      <div id="contextMenu" class="menu-panel context-menu" hidden></div>
+      <div id="slashMenu" class="menu-panel slash-menu" hidden></div>
+
+      <section class="workspace">
+        <div class="tabs-row">
+          <div id="tabs" class="tabs" role="tablist"></div>
+          <button id="newTabButton" class="new-tab" title="New document" aria-label="New document">+</button>
+        </div>
+
+        <main class="editor-shell">
+          <section id="emptyState" class="empty-state" hidden>
+            <div class="empty-icon">M</div>
+            <button id="emptyOpenButton">Open Markdown File</button>
+          </section>
+          <div id="codeEditorWrap" class="code-editor-wrap">
+            <pre id="lineNumbers" class="line-numbers" aria-hidden="true"></pre>
+            <textarea id="codeEditor" spellcheck="false" aria-label="Markdown code editor"></textarea>
+            <pre id="ghostText" class="ghost-text" aria-hidden="true"></pre>
+          </div>
+          <div id="renderEditor" class="markdown-body" aria-label="Rendered Markdown editor"></div>
+          <section id="diffEditor" class="diff-view" aria-label="Diff against previous edit"></section>
+        </main>
+
+        <footer class="statusbar">
+          <div class="status-left">
+            <span id="cursorPosition">Ln 1, Col 1</span>
+            <span id="charCount">0 chars</span>
+            <span id="filePath">Untitled</span>
+            <span id="statusMessage">Ready</span>
+          </div>
+          <span id="zoomLevel">100%</span>
+        </footer>
+      </section>
+    </div>
+
+    <script src="./src/modules/diff.js"></script>
+    <script src="./src/modules/wysiwyg.js"></script>
+    <script src="./src/renderer.js"></script>
+  </body>
+</html>

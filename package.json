@@ -1,0 +1,26 @@
+{
+  "name": "mdbasics",
+  "version": "0.1.0",
+  "description": "A minimal desktop Markdown editor with code and rendered editing.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "keywords": [
+    "markdown",
+    "editor",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^41.4.0"
+  },
+  "dependencies": {
+    "marked": "^16.4.1",
+    "pandoc-wasm": "^1.0.1",
+    "sanitize-html": "^2.17.3",
+    "turndown": "^7.2.1"
+  }
+}

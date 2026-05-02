@@ -1,0 +1,561 @@
+:root {
+  color-scheme: dark;
+  --bg: #121316;
+  --surface: rgba(22, 24, 29, 0.92);
+  --surface-strong: rgba(22, 24, 29, 0.92);
+  --text: #f4f0e8;
+  --muted: #9ba0a8;
+  --line: rgba(255, 255, 255, 0.08);
+  --accent: #68d8c1;
+  --accent-2: #f7c873;
+  --danger: #ef7d8f;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body.light {
+  color-scheme: light;
+  --bg: #f6f5f1;
+  --surface: rgba(255, 255, 253, 0.92);
+  --surface-strong: rgba(255, 255, 253, 0.92);
+  --text: #202124;
+  --muted: #666b74;
+  --line: rgba(30, 34, 40, 0.12);
+  --accent: #0c8f7d;
+  --accent-2: #a45d00;
+  --shadow: 0 24px 80px rgba(38, 42, 48, 0.14);
+}
+
+body.glass {
+  --surface: rgba(25, 27, 32, 0.68);
+  --surface-strong: rgba(34, 37, 43, 0.74);
+}
+
+body.light.glass {
+  --surface: rgba(255, 255, 253, 0.72);
+  --surface-strong: rgba(247, 247, 243, 0.78);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+textarea,
+article {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  height: 32px;
+  padding: 0 12px;
+}
+
+button:hover,
+button.active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+#app {
+  height: 100vh;
+  padding: 0;
+}
+
+.topbar,
+.workspace,
+.menu-panel {
+  backdrop-filter: blur(22px) saturate(1.25);
+  background: var(--surface);
+  border: 0;
+  box-shadow: none;
+}
+
+.topbar {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 148px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar button,
+.menu-panel,
+.tabs-row button {
+  -webkit-app-region: no-drag;
+}
+
+.menu,
+.view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu button {
+  border: 0;
+  color: var(--muted);
+  height: 28px;
+  padding: 0 9px;
+}
+
+.app-mark {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.title-text {
+  display: none;
+}
+
+.title-toggle {
+  margin-left: auto;
+}
+
+.menu-panel {
+  position: absolute;
+  z-index: 20;
+  display: grid;
+  min-width: 172px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.menu-panel[hidden] {
+  display: none;
+}
+
+.menu-panel button {
+  width: 100%;
+  justify-content: flex-start;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+}
+
+.slash-menu button {
+  display: grid;
+  grid-template-columns: 74px minmax(120px, 1fr) 104px;
+  gap: 14px;
+  min-width: 360px;
+  align-items: center;
+}
+
+.slash-menu small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.slash-syntax {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slash-shortcut {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.menu-panel button.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.context-menu,
+.slash-menu {
+  min-width: 150px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: 36px 1fr 28px;
+  height: calc(100vh - 40px);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.tabs-row,
+.statusbar {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+
+.tabs-row {
+  gap: 8px;
+  padding: 0 10px;
+  border-top: 0;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: auto hidden;
+}
+
+.tab {
+  display: inline-grid;
+  grid-template-columns: minmax(48px, 180px) 18px;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  height: 28px;
+  padding: 0 4px 0 8px;
+}
+
+.tab.active {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+}
+
+.tab-title,
+.tab-close {
+  border: 0;
+  height: 22px;
+  padding: 0;
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.tab-close {
+  width: 18px;
+  color: var(--muted);
+}
+
+.new-tab {
+  width: 30px;
+  padding: 0;
+  flex: 0 0 auto;
+  border-color: transparent;
+  background: transparent;
+}
+
+.view-toggle {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.view-toggle button {
+  border: 0;
+  display: grid;
+  width: 30px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+}
+
+.view-toggle svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.view-toggle button.active {
+  color: var(--accent);
+}
+
+.editor-shell {
+  position: relative;
+  min-height: 0;
+  background: transparent;
+}
+
+.empty-state {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+}
+
+.empty-state[hidden] {
+  display: none;
+}
+
+.empty-icon {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 38px;
+  font-weight: 800;
+}
+
+.code-editor-wrap,
+#codeEditor,
+#renderEditor,
+#diffEditor {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: var(--text);
+  overflow: auto;
+}
+
+.code-editor-wrap {
+  --editor-font-size: 15px;
+  display: grid;
+  grid-template-columns: 0 minmax(0, 1fr);
+  overflow: hidden;
+  position: relative;
+}
+
+.code-editor-wrap.show-lines {
+  grid-template-columns: 58px minmax(0, 1fr);
+}
+
+.line-numbers {
+  margin: 0;
+  padding: 30px 10px 30px 0;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  font: var(--editor-font-size)/1.75 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  text-align: right;
+  user-select: none;
+}
+
+#codeEditor {
+  position: relative;
+  z-index: 1;
+  padding: 30px clamp(22px, 5vw, 72px);
+  font: var(--editor-font-size)/1.75 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  caret-color: var(--accent);
+  white-space: pre-wrap;
+}
+
+.ghost-text {
+  position: absolute;
+  z-index: 0;
+  left: clamp(22px, 5vw, 72px);
+  top: 30px;
+  right: clamp(22px, 5vw, 72px);
+  margin: 0;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--muted) 34%, transparent);
+  font: var(--editor-font-size)/1.75 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+.code-editor-wrap.show-lines .ghost-text {
+  left: calc(58px + clamp(22px, 5vw, 72px));
+}
+
+.ghost-text[hidden] {
+  display: none;
+}
+
+#codeEditor.no-wrap {
+  white-space: pre;
+}
+
+#renderEditor {
+  padding: 0;
+  line-height: 1.72;
+}
+
+#diffEditor {
+  padding: 22px clamp(16px, 4vw, 56px) 70px;
+}
+
+.diff-view {
+  color: var(--text);
+  font: 13px/1.55 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  overflow: auto;
+}
+
+.diff-line {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  min-height: 28px;
+}
+
+.diff-line span {
+  color: var(--muted);
+  padding: 4px 12px 4px 0;
+  text-align: right;
+  user-select: none;
+}
+
+.diff-line code {
+  display: block;
+  overflow-x: auto;
+  padding: 4px 10px;
+  white-space: pre;
+}
+
+.diff-line.added code {
+  background: rgba(104, 216, 193, 0.14);
+  color: color-mix(in srgb, var(--text) 90%, var(--accent));
+}
+
+.diff-line.removed code {
+  background: rgba(239, 125, 143, 0.14);
+  color: color-mix(in srgb, var(--text) 90%, var(--danger));
+}
+
+.diff-line.same code {
+  color: color-mix(in srgb, var(--text) 64%, var(--muted));
+}
+
+.diff-empty {
+  color: var(--muted);
+  padding: 18px;
+}
+
+.markdown-body {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.markdown-body h1 {
+  font-size: 34px;
+  margin: 8px 0 24px;
+}
+
+.markdown-body h2 {
+  font-size: 24px;
+  margin-top: 34px;
+}
+
+.markdown-body p,
+.markdown-body li {
+  color: color-mix(in srgb, var(--text) 88%, var(--muted));
+}
+
+.markdown-body code {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  padding: 2px 5px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.markdown-body pre {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  padding: 16px;
+  overflow: auto;
+}
+
+.markdown-body blockquote {
+  margin-left: 0;
+  border-left: 3px solid var(--accent);
+  padding-left: 16px;
+  color: var(--muted);
+}
+
+.markdown-body li:has(> input[type="checkbox"]),
+#renderEditor li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.4em;
+}
+
+.markdown-body li > input[type="checkbox"],
+#renderEditor li > input[type="checkbox"] {
+  margin-right: 0.55em;
+  transform: translateY(0.08em);
+}
+
+.statusbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 0 14px;
+  border-bottom: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+#filePath {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  #app {
+    padding: 8px;
+  }
+
+  .topbar {
+    padding-right: 120px;
+  }
+
+  .title-text {
+    display: none;
+  }
+
+  .workspace {
+    height: calc(100vh - 40px);
+  }
+}
