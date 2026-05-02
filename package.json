@@ -1,7 +1,7 @@
 {
   "name": "mdbasics",
   "version": "0.1.0",
-  "description": "A minimal desktop Markdown editor with code and rendered editing.",
+  "description": "A minimal desktop Markdown code editor for native Markdown files.",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",

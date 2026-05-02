@@ -93,7 +93,6 @@ Code block
       title,
       filePath,
       text,
-      previousText: text,
       undoStack: [],
       redoStack: [],
       dirty: false
@@ -135,7 +134,6 @@ Code block
     });
 
     filePathEl.textContent = doc?.filePath || doc?.title || "No document";
-    const words = (doc?.text.match(/\b\S+\b/g) || []).length;
     charCountEl.textContent = `${doc?.text.length || 0} chars`;
     emptyState.hidden = Boolean(doc);
     codeEditorWrap.hidden = !doc;
@@ -181,7 +179,6 @@ Code block
     const doc = getActiveDoc();
     if (!doc || doc.text === text) return;
     if (trackHistory && !applyingHistory) {
-      doc.previousText = doc.text;
       doc.undoStack.push(doc.text);
       doc.redoStack = [];
       if (doc.undoStack.length > 200) doc.undoStack.shift();
@@ -195,7 +192,6 @@ Code block
     const doc = getActiveDoc();
     if (!doc || doc.undoStack.length === 0) return;
     doc.redoStack.push(doc.text);
-    doc.previousText = doc.text;
     applyingHistory = true;
     applyText(doc.undoStack.pop());
     applyingHistory = false;
@@ -205,7 +201,6 @@ Code block
     const doc = getActiveDoc();
     if (!doc || doc.redoStack.length === 0) return;
     doc.undoStack.push(doc.text);
-    doc.previousText = doc.text;
     applyingHistory = true;
     applyText(doc.redoStack.pop());
     applyingHistory = false;
@@ -644,8 +639,9 @@ Code block
   }
 
   function insertAtSelection(text) {
-    replaceRange(codeEditor.selectionStart, codeEditor.selectionEnd, text);
-    setSelection(codeEditor.selectionStart + text.length);
+    const start = codeEditor.selectionStart;
+    replaceRange(start, codeEditor.selectionEnd, text);
+    setSelection(start + text.length);
   }
 
   function replaceRange(start, end, text) {

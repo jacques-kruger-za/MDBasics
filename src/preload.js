@@ -34,10 +34,8 @@ contextBridge.exposeInMainWorld("mdb", {
   exportPdf: (payload) => ipcRenderer.invoke("export:pdf", payload),
   exportWord: (payload) => ipcRenderer.invoke("export:word", payload),
   printDocument: (payload) => ipcRenderer.invoke("document:print", payload),
-  popupMenu: (payload) => ipcRenderer.invoke("menu:popup", payload),
   setTitlebarTheme: (theme) => ipcRenderer.invoke("window:set-titlebar-theme", theme),
   markdownToHtml,
   htmlToMarkdown: (html) => turndown.turndown(html || ""),
-  onOpenPath: (callback) => ipcRenderer.on("open-file-path", (_event, filePath) => callback(filePath)),
-  onCommand: (channel, callback) => ipcRenderer.on(channel, callback)
+  onOpenPath: (callback) => ipcRenderer.on("open-file-path", (_event, filePath) => callback(filePath))
 });

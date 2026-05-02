@@ -145,19 +145,6 @@ ipcMain.handle("export:pdf", async (_event, payload) => {
 
 ipcMain.handle("document:print", async (_event, payload) => printHtml(payload.html));
 
-ipcMain.handle("menu:popup", async (event, payload) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (!win) return null;
-
-  const menu = Menu.buildFromTemplate(getPopupMenuTemplate(event.sender, payload.name));
-  menu.popup({
-    window: win,
-    x: Math.round(payload.x || 0),
-    y: Math.round(payload.y || 0)
-  });
-  return { opened: payload.name };
-});
-
 ipcMain.handle("window:set-titlebar-theme", async (event, theme) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win || process.platform !== "win32") return null;
@@ -168,47 +155,6 @@ ipcMain.handle("window:set-titlebar-theme", async (event, theme) => {
   });
   return { theme };
 });
-
-function getPopupMenuTemplate(sender, name) {
-  const send = (channel) => () => sender.send(channel);
-  const templates = {
-    file: [
-      { label: "New Tab", accelerator: "Ctrl+N", click: send("menu:new-tab") },
-      { label: "Close Tab", accelerator: "Ctrl+W", click: send("menu:close-tab") },
-      { type: "separator" },
-      { label: "Open...", accelerator: "Ctrl+O", click: send("menu:open") },
-      { label: "Save", accelerator: "Ctrl+S", click: send("menu:save") },
-      { label: "Save As...", accelerator: "Ctrl+Shift+S", click: send("menu:save-as") },
-      { type: "separator" },
-      { label: "Print...", accelerator: "Ctrl+P", click: send("menu:print") },
-      { type: "separator" },
-      { label: "Export HTML", click: send("menu:export-html") },
-      { label: "Export PDF", click: send("menu:export-pdf") },
-      { label: "Export Word", click: send("menu:export-word") }
-    ],
-    edit: [
-      { label: "Undo", accelerator: "Ctrl+Z", click: send("menu:undo") },
-      { label: "Redo", accelerator: "Ctrl+Y", click: send("menu:redo") },
-      { type: "separator" },
-      { role: "cut" },
-      { role: "copy" },
-      { role: "paste" },
-      { role: "selectAll" }
-    ],
-    view: [
-      { label: "Code", accelerator: "Ctrl+1", click: send("menu:code-view") },
-      { label: "Rendered", accelerator: "Ctrl+2", click: send("menu:render-view") },
-      { label: "Diff", accelerator: "Ctrl+3", click: send("menu:diff-view") }
-    ],
-    settings: [
-      { label: "Toggle Light/Dark", click: send("menu:toggle-theme") },
-      { label: "Toggle Glass", click: send("menu:toggle-glass") },
-      { label: "Toggle Line Wrap", click: send("menu:toggle-line-wrap") }
-    ]
-  };
-
-  return templates[name] || [];
-}
 
 async function renderToPdf(html) {
   const win = new BrowserWindow({
