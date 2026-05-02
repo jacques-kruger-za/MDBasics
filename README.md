@@ -10,6 +10,7 @@ MDBasics is a minimal Windows-focused desktop Markdown editor built with Electro
 - Code editor with Markdown-aware helpers
 - Slash command menu for common block types
 - Keyboard shortcuts for block conversion and inline formatting
+- Code-view table helpers for standard Markdown pipe tables
 - Dark/light mode and optional glass background
 - Optional line numbers
 - Status bar with line, column, character count, path, status, and zoom
@@ -54,8 +55,21 @@ Block commands:
 | `Ctrl+Shift+8` | Horizontal rule |
 | `Ctrl+Shift+9` | Code block |
 | `Ctrl+Shift+0` | Paragraph |
+| `Ctrl+Shift+T` | Table |
 
 The `/` menu exposes the same block commands with syntax reminders.
+
+## Tables
+
+Tables stay as standard Markdown pipe tables so they export cleanly through Pandoc and remain portable to Obsidian, GitHub, and Notion-style Markdown flows.
+
+Inside a table:
+
+- `Tab` moves to the next cell and creates a new row when needed.
+- `Shift+Tab` moves to the previous cell.
+- `Enter` inserts a row below and keeps the cursor in the same column.
+- `Ctrl+Enter` exits the table.
+- Right-click exposes format, row, column, and alignment actions.
 
 ## Exports
 
@@ -70,6 +84,7 @@ src/main.js             Electron main process and native dialogs/export handlers
 src/preload.js          Safe renderer bridge and Markdown conversion helpers
 src/renderer.js         Active code-editor-first renderer
 src/styles.css          App styling
+src/modules/table-editing.js  Code-view Markdown table editing helpers
 src/modules/diff.js     Parked diff module
 src/modules/wysiwyg.js  Parked WYSIWYG module boundary
 logs/CHANGELOG.md       Development log

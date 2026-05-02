@@ -46,7 +46,8 @@
     { label: "Task", marker: "- [ ] ", syntax: "- [ ]", shortcut: "Ctrl+Shift+7" },
     { label: "Line", marker: "---\n\n", syntax: "---", shortcut: "Ctrl+Shift+8", cursorOffset: 5 },
     { label: "Code Block", marker: "```\n\n```", syntax: "```", shortcut: "Ctrl+Shift+9", cursorOffset: 4 },
-    { label: "Paragraph", marker: "paragraph", syntax: "¶", shortcut: "Ctrl+Shift+0" }
+    { label: "Paragraph", marker: "paragraph", syntax: "¶", shortcut: "Ctrl+Shift+0" },
+    { label: "Table", marker: "table", syntax: "|", shortcut: "Ctrl+Shift+T" }
   ];
   const defaultGhostText = `# Heading 1
 ## Heading 2
@@ -59,6 +60,10 @@ Plain paragraph with **bold**, _italic_, <u>underline</u>, and \`inline code\`.
 - Bullet item
 1. Numbered item
 - [ ] Task item
+
+| Column 1 | Column 2 |
+| --- | --- |
+| Cell | Cell |
 
 ---
 
@@ -475,8 +480,14 @@ Code block
         return;
       }
     }
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "t") {
+      event.preventDefault();
+      applyLineCommand(slashCommands.find((command) => command.marker === "table"), false);
+      return;
+    }
     if (event.ctrlKey || event.metaKey) {
       const key = event.key.toLowerCase();
+      if (key === "enter" && exitTable(event)) return;
       if (key === "b") {
         event.preventDefault();
         wrapCodeSelection("**", "**");
@@ -494,6 +505,8 @@ Code block
       }
     }
     if ((event.key === " " || event.key === "Enter") && exitInlineFormatting(event)) return;
+    if (event.key === "Tab" && handleTableTab(event)) return;
+    if (event.key === "Enter" && handleTableEnter(event)) return;
     if (event.key === "Enter" && handleMarkdownEnter(event)) return;
     if (event.key === "Tab") insertCodeTab(event);
   }
@@ -594,6 +607,42 @@ Code block
     insertAtSelection("\t");
   }
 
+  function handleTableTab(event) {
+    if (!window.MDBasicsTableEditing) return false;
+    const result = window.MDBasicsTableEditing.moveCell(
+      codeEditor.value,
+      codeEditor.selectionStart,
+      event.shiftKey ? -1 : 1
+    );
+    if (!result) return false;
+    event.preventDefault();
+    applyTableResult(result, "Table cell");
+    return true;
+  }
+
+  function handleTableEnter(event) {
+    if (!window.MDBasicsTableEditing) return false;
+    const result = window.MDBasicsTableEditing.insertRow(codeEditor.value, codeEditor.selectionStart, "below");
+    if (!result) return false;
+    event.preventDefault();
+    applyTableResult(result, "Inserted table row");
+    return true;
+  }
+
+  function exitTable(event) {
+    if (!window.MDBasicsTableEditing) return false;
+    const table = window.MDBasicsTableEditing.analyze(codeEditor.value, codeEditor.selectionStart);
+    if (!table) return false;
+    event.preventDefault();
+    const insertionPoint = table.end;
+    const suffix = codeEditor.value[insertionPoint] === "\n" ? "\n" : "\n\n";
+    codeEditor.value = `${codeEditor.value.slice(0, insertionPoint)}${suffix}${codeEditor.value.slice(insertionPoint)}`;
+    setSelection(insertionPoint + suffix.length);
+    setText(codeEditor.value);
+    setStatus("Exited table");
+    return true;
+  }
+
   function insertAtSelection(text) {
     replaceRange(codeEditor.selectionStart, codeEditor.selectionEnd, text);
     setSelection(codeEditor.selectionStart + text.length);
@@ -623,6 +672,10 @@ Code block
       ["Copy", () => document.execCommand("copy")],
       ["Paste", () => document.execCommand("paste")]
     ];
+    const tableItems = getTableContextItems();
+    if (tableItems.length) {
+      items.push(...tableItems);
+    }
 
     contextMenu.innerHTML = "";
     items.forEach(([label, action]) => {
@@ -636,13 +689,49 @@ Code block
       });
       contextMenu.appendChild(item);
     });
-    contextMenu.style.left = `${event.clientX}px`;
-    contextMenu.style.top = `${event.clientY}px`;
     contextMenu.hidden = false;
+    const rect = contextMenu.getBoundingClientRect();
+    contextMenu.style.left = `${clamp(event.clientX, 8, window.innerWidth - rect.width - 8)}px`;
+    contextMenu.style.top = `${clamp(event.clientY, 8, window.innerHeight - rect.height - 8)}px`;
   }
 
   function closeContextMenu() {
     contextMenu.hidden = true;
+  }
+
+  function getTableContextItems() {
+    if (!window.MDBasicsTableEditing?.analyze(codeEditor.value, codeEditor.selectionStart)) return [];
+    return [
+      ["Format Table", () => runTableCommand("format")],
+      ["Insert Row Above", () => runTableCommand("insertRow", "above")],
+      ["Insert Row Below", () => runTableCommand("insertRow", "below")],
+      ["Delete Row", () => runTableCommand("deleteRow")],
+      ["Insert Column Left", () => runTableCommand("insertColumn", "left")],
+      ["Insert Column Right", () => runTableCommand("insertColumn", "right")],
+      ["Delete Column", () => runTableCommand("deleteColumn")],
+      ["Align Left", () => runTableCommand("setAlignment", "left")],
+      ["Align Center", () => runTableCommand("setAlignment", "center")],
+      ["Align Right", () => runTableCommand("setAlignment", "right")]
+    ];
+  }
+
+  function runTableCommand(commandName, argument) {
+    const table = window.MDBasicsTableEditing;
+    if (!table) return;
+    const result = table[commandName](codeEditor.value, codeEditor.selectionStart, argument);
+    if (!result) {
+      setStatus("No table action available");
+      return;
+    }
+    applyTableResult(result, "Updated table");
+  }
+
+  function applyTableResult(result, message) {
+    codeEditor.value = result.value;
+    setSelection(result.cursor);
+    setText(codeEditor.value);
+    codeEditor.focus();
+    setStatus(message);
   }
 
   function wrapCodeSelection(before, after) {
@@ -887,6 +976,7 @@ Code block
   }
 
   function applyLineCommand(command, stripSlash) {
+    if (!command) return;
     const start = codeEditor.selectionStart;
     const value = codeEditor.value;
     const lineStart = value.lastIndexOf("\n", start - 1) + 1;
@@ -904,6 +994,23 @@ Code block
       slashSuppressed = false;
       hideSlashMenu();
       codeEditor.focus();
+      return;
+    }
+
+    if (command.marker === "table") {
+      const table = window.MDBasicsTableEditing.createDefaultTable();
+      const prefix = lineStart > 0 && value[lineStart - 1] !== "\n" ? "\n" : "";
+      const suffix = lineEnd < value.length && value[lineEnd] !== "\n" ? "\n" : "";
+      const replacement = `${prefix}${table.text}${suffix}`;
+      codeEditor.value = `${value.slice(0, lineStart)}${replacement}${value.slice(lineEnd)}`;
+      const cursor = lineStart + prefix.length + table.cursorOffset;
+      codeEditor.selectionStart = cursor;
+      codeEditor.selectionEnd = cursor;
+      setText(codeEditor.value);
+      slashSuppressed = false;
+      hideSlashMenu();
+      codeEditor.focus();
+      setStatus("Inserted table");
       return;
     }
 

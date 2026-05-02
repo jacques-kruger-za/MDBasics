@@ -39,6 +39,7 @@
 - Simplified active UI behavior so Rendered and Diff are disabled/parked instead of partially active.
 - Added optional line-number gutter, cursor line/column plus character count in the left status bar, and editor zoom display/control via Ctrl+mouse wheel.
 - Replaced default starter Markdown content with non-persistent ghost text covering common blocks and inline formatting examples.
+- Added code-view Markdown table helpers: `/table`, `Ctrl+Shift+T`, Tab/Shift+Tab cell navigation, Enter row insertion, Ctrl+Enter table exit, right-click row/column/alignment actions, and table formatting.
 
 ### Health Checks
 - Installed dependencies and upgraded Electron to 41.4.0 to clear npm audit advisories.
