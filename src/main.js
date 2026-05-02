@@ -3,6 +3,16 @@ const fs = require("fs/promises");
 const path = require("path");
 
 const windows = new Set();
+const markdownFilePattern = /\.(md|markdown|mdown|mkd)$/i;
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
+function findMarkdownArg(argv) {
+  return argv.find((arg) => markdownFilePattern.test(arg));
+}
 
 function createWindow(fileToOpen) {
   const isWindows = process.platform === "win32";
@@ -39,9 +49,18 @@ function createWindow(fileToOpen) {
   win.loadFile(path.join(__dirname, "..", "index.html"));
 
   if (fileToOpen) {
+    openPathInWindow(win, fileToOpen);
+  }
+}
+
+function openPathInWindow(win, filePath) {
+  if (!filePath) return;
+  if (win.webContents.isLoading()) {
     win.webContents.once("did-finish-load", () => {
-      win.webContents.send("open-file-path", fileToOpen);
+      win.webContents.send("open-file-path", filePath);
     });
+  } else {
+    win.webContents.send("open-file-path", filePath);
   }
 }
 
@@ -220,11 +239,23 @@ async function exportWordWithPandoc(markdown, outputPath) {
 
 app.whenReady().then(() => {
   buildMenu();
-  createWindow(process.argv.find((arg) => /\.(md|markdown|mdown|mkd)$/i.test(arg)));
+  createWindow(findMarkdownArg(process.argv));
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on("second-instance", (_event, argv) => {
+  const fileToOpen = findMarkdownArg(argv);
+  const win = BrowserWindow.getAllWindows()[0];
+  if (!win) {
+    createWindow(fileToOpen);
+    return;
+  }
+  if (win.isMinimized()) win.restore();
+  win.focus();
+  openPathInWindow(win, fileToOpen);
 });
 
 app.on("window-all-closed", () => {

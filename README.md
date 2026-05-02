@@ -5,6 +5,7 @@ MDBasics is a minimal Windows-focused desktop Markdown editor built with Electro
 ## Current Scope
 
 - Native desktop window with custom app top bar
+- Windows file association for `.md`, `.markdown`, `.mdown`, and `.mkd`
 - Markdown file open, save, and save as
 - Tabbed documents
 - Code editor with Markdown-aware helpers

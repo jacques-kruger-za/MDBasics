@@ -1,3 +1,13 @@
+## v0.1.1 - 2026-05-02
+
+### Changes
+- Added Windows installer file associations for `.md`, `.markdown`, `.mdown`, and `.mkd`.
+- Added single-instance file-open handling so opening a Markdown file from Explorer routes into the existing app window.
+
+### Health Checks
+- Ran syntax verification and npm audit.
+- Rebuilt the Windows installer as `MDBasics-0.1.1-Setup-x64.exe`.
+
 ## v0.1.0 - 2026-05-02
 
 ### Changes
