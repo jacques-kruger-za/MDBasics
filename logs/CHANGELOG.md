@@ -42,6 +42,7 @@
 - Added code-view Markdown table helpers: `/table`, `Ctrl+Shift+T`, Tab/Shift+Tab cell navigation, Enter row insertion, Ctrl+Enter table exit, right-click row/column/alignment actions, and table formatting.
 - Cleaned up the code-editor context menu into copy/paste, formatting, and a table submenu, and fixed table Tab navigation to land at the start of the next cell.
 - Removed dead native popup-menu IPC from the earlier menu experiment, trimmed unused diff-era document state, and made insertion cursor placement explicit.
+- Fixed slash command menu boundary handling after filtering and keyboard navigation so long menus stay visible near the bottom of the editor.
 
 ### Health Checks
 - Installed dependencies and upgraded Electron to 41.4.0 to clear npm audit advisories.

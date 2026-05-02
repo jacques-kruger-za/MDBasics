@@ -825,14 +825,30 @@ Code block
     if (slashSuppressed) return;
 
     renderSlashMenu();
-    const rect = getTextareaCaretRect(codeEditor);
     slashMenu.hidden = false;
+    positionSlashMenu();
+  }
+
+  function positionSlashMenu() {
+    if (slashMenu.hidden) return;
+    slashMenu.style.maxHeight = "";
+    slashMenu.style.overflowY = "";
+
+    const rect = getTextareaCaretRect(codeEditor);
     const menuRect = slashMenu.getBoundingClientRect();
     const editorRect = codeEditor.getBoundingClientRect();
     const left = clamp(rect.left, editorRect.left + 8, window.innerWidth - menuRect.width - 8);
     const below = rect.bottom + 6;
-    const above = rect.top - menuRect.height - 6;
-    const top = below + menuRect.height > window.innerHeight - 8 ? Math.max(editorRect.top + 8, above) : below;
+    const belowSpace = window.innerHeight - below - 8;
+    const aboveSpace = rect.top - editorRect.top - 14;
+    const opensAbove = menuRect.height > belowSpace && aboveSpace > belowSpace;
+    const availableHeight = Math.max(96, opensAbove ? aboveSpace : belowSpace);
+    const top = opensAbove
+      ? Math.max(editorRect.top + 8, rect.top - Math.min(menuRect.height, availableHeight) - 6)
+      : below;
+
+    slashMenu.style.maxHeight = `${availableHeight}px`;
+    slashMenu.style.overflowY = menuRect.height > availableHeight ? "auto" : "";
     slashMenu.style.left = `${left}px`;
     slashMenu.style.top = `${top}px`;
   }
@@ -914,6 +930,8 @@ Code block
     Array.from(slashMenu.children).forEach((child, index) => {
       child.classList.toggle("active", index === slashIndex);
     });
+    slashMenu.children[slashIndex]?.scrollIntoView({ block: "nearest" });
+    positionSlashMenu();
   }
 
   function handleSlashKeydown(event) {
@@ -923,6 +941,7 @@ Code block
       slashSearch += event.key;
       slashIndex = 0;
       renderSlashMenu();
+      positionSlashMenu();
       return true;
     }
     if (event.key === "Backspace" && slashSearch) {
@@ -930,6 +949,7 @@ Code block
       slashSearch = slashSearch.slice(0, -1);
       slashIndex = 0;
       renderSlashMenu();
+      positionSlashMenu();
       return true;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
