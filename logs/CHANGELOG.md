@@ -40,6 +40,7 @@
 - Added optional line-number gutter, cursor line/column plus character count in the left status bar, and editor zoom display/control via Ctrl+mouse wheel.
 - Replaced default starter Markdown content with non-persistent ghost text covering common blocks and inline formatting examples.
 - Added code-view Markdown table helpers: `/table`, `Ctrl+Shift+T`, Tab/Shift+Tab cell navigation, Enter row insertion, Ctrl+Enter table exit, right-click row/column/alignment actions, and table formatting.
+- Cleaned up the code-editor context menu into copy/paste, formatting, and a table submenu, and fixed table Tab navigation to land at the start of the next cell.
 
 ### Health Checks
 - Installed dependencies and upgraded Electron to 41.4.0 to clear npm audit advisories.

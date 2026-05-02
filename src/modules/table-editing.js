@@ -61,10 +61,14 @@
       const raw = current;
       const leading = raw.match(/^\s*/)[0].length;
       const trailing = raw.match(/\s*$/)[0].length;
+      const hasContent = raw.trim().length > 0;
       cells.push({
         text: raw.trim(),
         start: contentStart + leading,
-        end: contentStart + raw.length - trailing
+        end: contentStart + raw.length - trailing,
+        editStart: contentStart + (hasContent ? leading : Math.min(raw.length, 1)),
+        rangeStart: contentStart,
+        rangeEnd: index
       });
       contentStart = index + 1;
       current = "";
@@ -124,7 +128,7 @@
     const cellRanges = splitRowWithRanges(lines[lineIndex].text);
     const relativePosition = position - lines[lineIndex].start;
     let colIndex = Math.max(0, cellRanges.findIndex((cell, index) => (
-      relativePosition <= cell.end || index === cellRanges.length - 1
+      relativePosition <= cell.rangeEnd || index === cellRanges.length - 1
     )));
     if (colIndex === -1) colIndex = 0;
 
@@ -183,7 +187,7 @@
     }
     const ranges = splitRowWithRanges(lines[visualLineIndex] || "");
     const cell = ranges[clamp(colIndex, 0, ranges.length - 1)];
-    return offset + (cell ? cell.start : 2);
+    return offset + (cell ? cell.editStart : 2);
   }
 
   function moveCell(value, position, direction) {

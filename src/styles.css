@@ -194,6 +194,41 @@ button.active {
   min-width: 150px;
 }
 
+.menu-separator {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--line);
+}
+
+.submenu-wrap {
+  position: relative;
+}
+
+.submenu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between !important;
+  gap: 24px;
+}
+
+.submenu-panel {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 6px);
+  display: none;
+  min-width: 190px;
+}
+
+.context-menu.submenu-left .submenu-panel {
+  right: calc(100% + 6px);
+  left: auto;
+}
+
+.submenu-wrap:hover > .submenu-panel,
+.submenu-wrap:focus-within > .submenu-panel {
+  display: grid;
+}
+
 .workspace {
   display: grid;
   grid-template-rows: 36px 1fr 28px;

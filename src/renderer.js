@@ -662,41 +662,71 @@ Code block
   function showContextMenu(event) {
     event.preventDefault();
     closeMenuPanel();
-    const items = [
-      ["Bold", () => wrapCodeSelection("**", "**")],
-      ["Italic", () => wrapCodeSelection("_", "_")],
-      ["Underline", () => wrapCodeSelection("<u>", "</u>")],
-      ["Code", () => wrapCodeSelection("`", "`")],
-      ["Quote Line", () => prefixCurrentLine("> ")],
-      ["Bullet Line", () => prefixCurrentLine("- ")],
-      ["Copy", () => document.execCommand("copy")],
-      ["Paste", () => document.execCommand("paste")]
-    ];
+    closeContextMenu();
+    contextMenu.innerHTML = "";
+    addContextButton("Copy", () => document.execCommand("copy"));
+    addContextButton("Paste", () => document.execCommand("paste"));
+    addContextSeparator();
+    addContextButton("Bold", () => wrapCodeSelection("**", "**"));
+    addContextButton("Italic", () => wrapCodeSelection("_", "_"));
+    addContextButton("Underline", () => wrapCodeSelection("<u>", "</u>"));
+    addContextButton("Code", () => wrapCodeSelection("`", "`"));
+    addContextButton("Quote Line", () => prefixCurrentLine("> "));
+    addContextButton("Bullet Line", () => prefixCurrentLine("- "));
+
     const tableItems = getTableContextItems();
     if (tableItems.length) {
-      items.push(...tableItems);
+      addContextSeparator();
+      addContextSubmenu("Tables", tableItems);
     }
 
-    contextMenu.innerHTML = "";
-    items.forEach(([label, action]) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.textContent = label;
-      item.addEventListener("pointerdown", (pointerEvent) => {
-        pointerEvent.preventDefault();
-        action();
-        closeContextMenu();
-      });
-      contextMenu.appendChild(item);
-    });
+    contextMenu.classList.remove("submenu-left");
     contextMenu.hidden = false;
     const rect = contextMenu.getBoundingClientRect();
-    contextMenu.style.left = `${clamp(event.clientX, 8, window.innerWidth - rect.width - 8)}px`;
+    const left = clamp(event.clientX, 8, window.innerWidth - rect.width - 8);
+    if (left + rect.width + 210 > window.innerWidth) contextMenu.classList.add("submenu-left");
+    contextMenu.style.left = `${left}px`;
     contextMenu.style.top = `${clamp(event.clientY, 8, window.innerHeight - rect.height - 8)}px`;
   }
 
   function closeContextMenu() {
     contextMenu.hidden = true;
+    contextMenu.classList.remove("submenu-left");
+  }
+
+  function addContextSeparator() {
+    const separator = document.createElement("div");
+    separator.className = "menu-separator";
+    contextMenu.appendChild(separator);
+  }
+
+  function addContextButton(label, action, parent = contextMenu) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.textContent = label;
+    item.addEventListener("pointerdown", (pointerEvent) => {
+      pointerEvent.preventDefault();
+      pointerEvent.stopPropagation();
+      action();
+      closeContextMenu();
+    });
+    parent.appendChild(item);
+    return item;
+  }
+
+  function addContextSubmenu(label, items) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "submenu-wrap";
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "submenu-trigger";
+    trigger.innerHTML = `<span>${escapeHtml(label)}</span><span aria-hidden="true">›</span>`;
+    const submenu = document.createElement("div");
+    submenu.className = "menu-panel submenu-panel";
+    items.forEach(([itemLabel, action]) => addContextButton(itemLabel, action, submenu));
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(submenu);
+    contextMenu.appendChild(wrapper);
   }
 
   function getTableContextItems() {
