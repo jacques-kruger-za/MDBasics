@@ -1,5 +1,11 @@
 :root {
   color-scheme: dark;
+  /* Shell theme token map:
+     app-window -> outer frame, app-chrome -> topbar/workspace chrome,
+     document-surface -> active tab and open document canvas,
+     inactive-tab -> background tabs, activity-strip -> left icon rail,
+     inspector-pane -> right inspector, status-strip -> bottom info row.
+     Editor syntax and gutter tokens stay deferred to the CodeMirror pass. */
   --app-bg: #0e1013;
   --surface-main: rgba(18, 21, 25, 0.94);
   --surface-raised: rgba(27, 31, 36, 0.96);
@@ -26,6 +32,30 @@
   --text: var(--text-main);
   --muted: var(--text-muted);
   --line: var(--border-subtle);
+  --app-window-bg: var(--app-bg);
+  --app-chrome-bg: var(--surface);
+  --workspace-bg: var(--surface);
+  --floating-bg: var(--surface);
+  --document-surface-bg: var(--open-doc-bg);
+  --inactive-tab-bg: var(--tab-bg);
+  --active-tab-bg: var(--open-doc-bg);
+  --activity-strip-bg: color-mix(in srgb, var(--surface-main) 94%, var(--surface-raised));
+  --activity-pane-bg: var(--surface);
+  --inspector-pane-bg: var(--surface-inspector);
+  --status-strip-bg: color-mix(in srgb, var(--surface-raised) 76%, var(--surface-main));
+  --control-cluster-bg: color-mix(in srgb, var(--surface-main) 48%, transparent);
+  --shell-hairline: var(--hairline);
+  --subtle-hairline: color-mix(in srgb, var(--hairline) 70%, transparent);
+  --resize-line: var(--resize-hairline);
+  --hover-tint: color-mix(in srgb, var(--accent) 4%, transparent);
+  --hover-subtle-tint: color-mix(in srgb, var(--accent) 3%, transparent);
+  --active-tint: color-mix(in srgb, var(--accent) 7%, transparent);
+  --active-strong-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+  --hover-border: color-mix(in srgb, var(--accent) 18%, var(--line));
+  --accent-soft: color-mix(in srgb, var(--accent) 64%, var(--muted));
+  --accent-mark-bg: color-mix(in srgb, var(--accent) 18%, transparent);
+  --accent-glow-ring: color-mix(in srgb, var(--accent) 30%, transparent);
+  --accent-glow-shadow: color-mix(in srgb, var(--accent) 74%, transparent);
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
   font-family: "Segoe UI", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -141,8 +171,8 @@ button {
 
 button:hover,
 button.active {
-  border-color: color-mix(in srgb, var(--accent) 18%, var(--line));
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  border-color: var(--hover-border);
+  background: var(--hover-tint);
 }
 
 button:disabled {
@@ -162,7 +192,7 @@ button:disabled {
 .topbar,
 .workspace {
   backdrop-filter: blur(22px) saturate(1.25);
-  background: var(--surface);
+  background: var(--app-chrome-bg);
   border: 0;
   box-shadow: none;
 }
@@ -171,8 +201,8 @@ button:disabled {
 .menu-panel,
 body.activity-visible:not(.activity-pinned) .activity-pane {
   backdrop-filter: blur(22px) saturate(1.25);
-  background: var(--surface);
-  border: 1px solid var(--hairline);
+  background: var(--floating-bg);
+  border: 1px solid var(--shell-hairline);
   border-radius: 8px;
   box-shadow: var(--shadow);
 }
@@ -184,13 +214,12 @@ body.activity-visible:not(.activity-pinned) .activity-pane {
   gap: 3px;
   height: 42px;
   padding: 0 148px 0 6px;
-  border-bottom: 1px solid var(--hairline);
-  background: var(--surface);
+  border-bottom: 1px solid var(--shell-hairline);
+  background: var(--app-chrome-bg);
 }
 
 .topbar button,
-.menu-panel,
-.document-toolbar button {
+.menu-panel {
   -webkit-app-region: no-drag;
 }
 
@@ -232,7 +261,7 @@ body.activity-visible:not(.activity-pinned) .activity-pane {
   height: 22px;
   place-items: center;
   border-radius: 5px;
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--accent-mark-bg);
   color: var(--accent);
   font-size: 13px;
   font-weight: 800;
@@ -307,7 +336,7 @@ body.activity-visible:not(.activity-pinned) .activity-pane {
 }
 
 .menu-panel button.active {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--active-tint);
   color: var(--accent);
 }
 
@@ -323,7 +352,7 @@ body.activity-visible:not(.activity-pinned) .activity-pane {
 .menu-separator {
   height: 1px;
   margin: 6px 4px;
-  background: var(--hairline);
+  background: var(--shell-hairline);
 }
 
 .submenu-wrap {
@@ -394,7 +423,6 @@ body.activity-visible:not(.activity-pinned) .editor-shell {
   grid-column: 3;
 }
 
-.document-toolbar,
 .statusbar {
   display: flex;
   align-items: center;
@@ -424,8 +452,8 @@ body.activity-pinned .tabs {
   align-items: center;
   gap: 4px;
   max-width: 240px;
-  background: var(--tab-bg);
-  border: 1px solid var(--hairline);
+  background: var(--inactive-tab-bg);
+  border: 1px solid var(--shell-hairline);
   border-radius: 6px 6px 0 0;
   height: 37px;
   margin-top: 5px;
@@ -436,8 +464,8 @@ body.activity-pinned .tabs {
 }
 
 .tab.active {
-  background: var(--open-doc-bg);
-  border-color: var(--hairline);
+  background: var(--active-tab-bg);
+  border-color: var(--shell-hairline);
   border-bottom: 1px solid transparent;
   color: var(--text);
   font-weight: 650;
@@ -455,11 +483,11 @@ body.activity-pinned .tabs {
 }
 
 .tab:hover {
-  background: var(--tab-bg);
+  background: var(--inactive-tab-bg);
 }
 
 .tab.active:hover {
-  background: var(--open-doc-bg);
+  background: var(--active-tab-bg);
 }
 
 .tab-title,
@@ -492,8 +520,7 @@ body.activity-pinned .tabs {
   height: 7px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
-    0 0 9px color-mix(in srgb, var(--accent) 74%, transparent);
+  box-shadow: 0 0 0 1px var(--accent-glow-ring), 0 0 9px var(--accent-glow-shadow);
 }
 
 .tab-dirty-dot {
@@ -533,26 +560,12 @@ body.activity-pinned .tabs {
   opacity: 0;
 }
 
-.tab-actions,
-.format-toolbar {
+.tab-actions {
   display: flex;
   align-items: center;
   gap: 2px;
   margin-left: 6px;
   flex: 0 0 auto;
-}
-
-.format-toolbar {
-  margin-left: 8px;
-  color: var(--muted);
-}
-
-.format-toolbar button {
-  min-width: 26px;
-  height: 24px;
-  padding: 0 8px;
-  border: 0;
-  color: var(--muted);
 }
 
 .tab-actions {
@@ -596,18 +609,11 @@ body.activity-pinned .tabs {
 
 .inline-new-tab:hover {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--hover-tint);
 }
 
 #newTabButton {
   display: none;
-}
-
-.document-toolbar {
-  grid-row: 1;
-  grid-column: 2 / 4;
-  gap: 10px;
-  padding: 0 10px;
 }
 
 .activity-bar {
@@ -618,8 +624,8 @@ body.activity-pinned .tabs {
   align-items: center;
   gap: 6px;
   padding: 8px 4px 4px;
-  border-right: 1px solid var(--hairline);
-  background: color-mix(in srgb, var(--surface-main) 94%, var(--surface-raised));
+  border-right: 1px solid var(--shell-hairline);
+  background: var(--activity-strip-bg);
   min-height: 0;
   overflow: hidden;
 }
@@ -654,8 +660,8 @@ body:not(.activity-visible) .activity-bar {
 }
 
 .activity-button:hover {
-  color: color-mix(in srgb, var(--accent) 64%, var(--muted));
-  background: color-mix(in srgb, var(--accent) 3%, transparent);
+  color: var(--accent-soft);
+  background: var(--hover-subtle-tint);
 }
 
 .activity-settings {
@@ -670,8 +676,8 @@ body:not(.activity-visible) .activity-bar {
   min-width: 220px;
   min-height: 0;
   border: 0;
-  border-right: 1px solid var(--hairline);
-  background: var(--surface);
+  border-right: 1px solid var(--shell-hairline);
+  background: var(--activity-pane-bg);
   box-shadow: none;
   overflow: hidden;
 }
@@ -858,7 +864,7 @@ body.activity-visible .settings-overlay {
   width: min(980px, calc(100% - 24px));
   height: min(680px, calc(100% - 24px));
   min-height: 0;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--shell-hairline);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface-raised) 86%, transparent);
   backdrop-filter: blur(22px) saturate(1.25);
@@ -902,7 +908,7 @@ body.activity-visible .settings-overlay {
 
 .settings-nav button.active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: var(--active-tint);
 }
 
 .settings-overlay-content {
@@ -1032,7 +1038,7 @@ body.activity-visible .settings-overlay {
   grid-template-columns: minmax(0, 1fr) auto;
   height: 100%;
   min-height: 0;
-  background: var(--open-doc-bg);
+  background: var(--document-surface-bg);
 }
 
 .workspace-surface[hidden] {
@@ -1081,11 +1087,11 @@ body.activity-visible .settings-overlay {
   bottom: 0;
   left: 3px;
   width: 1px;
-  background: var(--resize-hairline);
+  background: var(--resize-line);
 }
 
 .pane-resize-handle:hover::before {
-  background: color-mix(in srgb, var(--accent) 24%, var(--resize-hairline));
+  background: color-mix(in srgb, var(--accent) 24%, var(--resize-line));
 }
 
 .doc-pane {
@@ -1115,8 +1121,10 @@ body.activity-visible .settings-overlay {
   left: 0;
   right: 0;
   height: 38px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 51px;
   pointer-events: none;
   opacity: 0.72;
   transition: opacity 120ms ease;
@@ -1143,8 +1151,17 @@ body.activity-visible .settings-overlay {
 .pane-menu {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   pointer-events: auto;
+}
+
+.pane-format-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 7px;
+  padding-left: 7px;
+  border-left: 1px solid var(--subtle-hairline);
 }
 
 .segmented-control,
@@ -1153,14 +1170,15 @@ body.activity-visible .settings-overlay {
   align-items: center;
   gap: 1px;
   padding: 1px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--shell-hairline);
   border-radius: 5px;
-  background: color-mix(in srgb, var(--surface-main) 48%, transparent);
+  background: var(--control-cluster-bg);
   backdrop-filter: blur(10px);
 }
 
 .pane-view-button,
-.pane-menu-button {
+.pane-menu-button,
+.pane-format-toolbar button {
   display: grid;
   width: 28px;
   height: 25px;
@@ -1169,6 +1187,14 @@ body.activity-visible .settings-overlay {
   border: 0;
   border-radius: 5px;
   color: var(--muted);
+}
+
+.pane-format-toolbar button {
+  width: auto;
+  min-width: 27px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .pane-view-button svg,
@@ -1185,7 +1211,7 @@ body.activity-visible .settings-overlay {
 .pane-view-button.active,
 .pane-menu-button.active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: var(--active-tint);
 }
 
 .pane-menu-button.parked {
@@ -1196,8 +1222,8 @@ body.activity-visible .settings-overlay {
   width: var(--inspector-width);
   min-width: 280px;
   height: 100%;
-  border-left: 1px solid var(--hairline);
-  background: var(--surface-inspector);
+  border-left: 1px solid var(--shell-hairline);
+  background: var(--inspector-pane-bg);
   overflow: hidden;
   position: relative;
 }
@@ -1218,7 +1244,7 @@ body.activity-visible .settings-overlay {
   gap: 8px;
   height: 38px;
   padding: 0 36px 0 12px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--shell-hairline);
   color: var(--muted);
   font-size: 12px;
 }
@@ -1242,9 +1268,9 @@ body.activity-visible .settings-overlay {
   gap: 1px;
   min-width: 0;
   padding: 1px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--shell-hairline);
   border-radius: 5px;
-  background: color-mix(in srgb, var(--surface-main) 48%, transparent);
+  background: var(--control-cluster-bg);
 }
 
 .inspector-tabs button,
@@ -1259,7 +1285,7 @@ body.activity-visible .settings-overlay {
 .inspector-tabs button.active,
 .inspector-filter.active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: var(--active-tint);
   font-weight: 650;
 }
 
@@ -1272,7 +1298,7 @@ body.activity-visible .settings-overlay {
   grid-template-columns: 1fr 1fr;
   width: 70px;
   padding: 2px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--shell-hairline);
   border-radius: 999px;
   background: var(--surface-muted);
   color: var(--muted);
@@ -1294,7 +1320,7 @@ body.activity-visible .settings-overlay {
 .diff-switch.active span:last-child,
 .diff-switch:not(.active) span:first-child {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--active-tint);
 }
 
 #diffInspectorContent {
@@ -1325,7 +1351,7 @@ body.activity-visible .settings-overlay {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--active-strong-tint);
   color: var(--accent);
   font-size: 54px;
   font-weight: 800;
@@ -1679,9 +1705,9 @@ body.activity-visible .settings-overlay {
   gap: 16px;
   min-height: 28px;
   padding: 0 14px;
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--shell-hairline);
   border-bottom: 0;
-  background: color-mix(in srgb, var(--surface-raised) 76%, var(--surface-main));
+  background: var(--status-strip-bg);
   color: var(--muted);
   font-size: 12px;
 }

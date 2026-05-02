@@ -13,6 +13,10 @@
 - Added glowing accent dots for the active pane and dirty tabs, changed tab close icons to fade in only on tab hover/focus while replacing the dirty dot, and added a native unsaved-document close warning with Save, Don't Save, and Cancel choices.
 - Fixed line-number gutter behavior for wrapped code lines by giving line-number rows estimated visual heights, preserving a fixed gutter whether numbers are shown or hidden, adding 5px more gutter/text spacing, and refreshing line-number geometry after pane, inspector, activity, and window resize changes.
 - Simplified the textarea line-number gutter back to stable logical line numbers after stress testing showed visual-row estimation breaks under heavy resize and zoom; precise wrapped-line gutters are now explicitly scoped to the CodeMirror migration.
+- Moved the optional formatting toolbar out of the app top bar and into each code pane menubar, aligned pane controls to the editor text column, and kept formatting controls hidden unless the pane is in Code view and the setting is enabled.
+- Consolidated shell CSS tokens for chrome surfaces, tabs, document canvas, action strip, inspector, status strip, hairlines, resize lines, hover tints, and active accents without changing the intended visual foundation.
+- Removed redundant hidden document-toolbar and topbar pane-control wiring now that split/view/sync controls live in each pane menubar.
+- Hardened hidden PDF/print windows so failed export or print setup cannot leave an offscreen BrowserWindow open.
 
 ### Health Checks
 - Ran `npm run verify`.

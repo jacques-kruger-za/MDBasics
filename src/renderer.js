@@ -12,19 +12,14 @@
   const appMenuButton = document.getElementById("appMenuButton");
   const activityToggleButton = document.getElementById("activityToggleButton");
   const shareButton = document.getElementById("shareButton");
-  const formatToolbar = document.getElementById("formatToolbar");
   const menuPanel = document.getElementById("menuPanel");
   const contextMenu = document.getElementById("contextMenu");
   const slashMenu = document.getElementById("slashMenu");
-  const documentToolbar = document.getElementById("documentToolbar");
   const paneArea = document.getElementById("paneArea");
   const rightInspector = document.getElementById("rightInspector");
   const diffInspectorContent = document.getElementById("diffInspectorContent");
   const topbarInspectorButton = document.getElementById("topbarInspectorButton");
 
-  const singleLayoutButton = document.getElementById("singleLayoutButton");
-  const splitLayoutButton = document.getElementById("splitLayoutButton");
-  const paneSyncButton = document.getElementById("paneSyncButton");
   const inspectorInfoButton = document.getElementById("inspectorInfoButton");
   const inspectorDiffButton = document.getElementById("inspectorDiffButton");
   const diffChangedOnlyButton = document.getElementById("diffChangedOnlyButton");
@@ -64,7 +59,6 @@
   let inspectorOpen = false;
   let inspectorMode = "info";
   let diffChangedOnly = true;
-  let paneSyncing = false;
   let paneRefreshing = false;
   let activityOpen = false;
   let activityRailVisible = false;
@@ -174,7 +168,6 @@ Code block
     document.documentElement.style.setProperty("--inspector-width", `${clamp(Number(appSettings.inspectorWidth) || 360, 280, 620)}px`);
     document.documentElement.style.setProperty("--editor-font", `"${appSettings.editorFont || "Cascadia Code"}", "SFMono-Regular", Consolas, monospace`);
     document.documentElement.style.setProperty("--preview-font", `"${appSettings.previewFont || "Segoe UI"}", Inter, ui-sans-serif, system-ui, sans-serif`);
-    formatToolbar.hidden = !appSettings.showFormattingToolbar;
     document.body.classList.toggle("activity-visible", activityRailVisible);
     activityToggleButton.classList.toggle("active", activityRailVisible);
     window.mdb.setTitlebarTheme(lightTheme ? "light" : "dark");
@@ -281,7 +274,6 @@ Code block
 
   function renderApp() {
     renderTabs();
-    renderFormatToolbar();
     renderWorkspace();
     updateToolbar();
     updateStatus();
@@ -320,33 +312,6 @@ Code block
     filePathEl.textContent = "";
     statusMessage.textContent = "";
     emptyState.hidden = Boolean(doc);
-    documentToolbar.hidden = true;
-  }
-
-  function renderFormatToolbar() {
-    formatToolbar.hidden = !appSettings.showFormattingToolbar;
-    if (formatToolbar.hidden) return;
-    const buttons = [
-      ["H1", () => applyLineCommand(slashCommands[0], false)],
-      ["H2", () => applyLineCommand(slashCommands[1], false)],
-      ["UL", () => applyLineCommand(slashCommands[4], false)],
-      ["1.", () => applyLineCommand(slashCommands[5], false)],
-      ["Task", () => applyLineCommand(slashCommands[6], false)],
-      ["B", () => wrapCodeSelection("**", "**")],
-      ["I", () => wrapCodeSelection("_", "_")],
-      ["U", () => wrapCodeSelection("<u>", "</u>")],
-      ["S", () => wrapCodeSelection("~~", "~~")],
-      ["Link", () => wrapCodeSelection("[", "](url)")],
-      ["Table", () => applyLineCommand(slashCommands[9], false)]
-    ];
-    formatToolbar.innerHTML = "";
-    buttons.forEach(([label, action]) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = label;
-      button.addEventListener("click", action);
-      formatToolbar.appendChild(button);
-    });
   }
 
   function renderWorkspace() {
@@ -398,23 +363,25 @@ Code block
 
     const header = document.createElement("div");
     header.className = "pane-header";
+    const formattingToolbar = appSettings.showFormattingToolbar && paneState.view === VIEW_CODE ? buildPaneFormattingToolbar() : "";
     header.innerHTML = `
       <span class="pane-active-dot" title="Active pane" aria-label="Active pane"></span>
       <div class="pane-menu" role="group" aria-label="${paneId === PANE_PRIMARY ? "Left" : "Right"} pane controls">
-      <div class="pane-view-toggle segmented-control" role="group" aria-label="${paneId === PANE_PRIMARY ? "Left" : "Right"} pane view">
-        <button class="pane-view-button ${paneState.view === VIEW_CODE ? "active" : ""}" data-pane-view="code" title="Code" aria-label="Code">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
+        <div class="pane-view-toggle segmented-control" role="group" aria-label="${paneId === PANE_PRIMARY ? "Left" : "Right"} pane view">
+          <button class="pane-view-button ${paneState.view === VIEW_CODE ? "active" : ""}" data-pane-view="code" title="Code" aria-label="Code">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
+          </button>
+          <button class="pane-view-button ${paneState.view === VIEW_PREVIEW ? "active" : ""}" data-pane-view="preview" title="Preview" aria-label="Preview">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <button class="pane-menu-button ${doc.layoutMode === "split" ? "active" : ""}" data-pane-action="split" title="Split panes" aria-label="Split panes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="7" height="14" rx="2"/><rect x="13" y="5" width="7" height="14" rx="2"/></svg>
         </button>
-        <button class="pane-view-button ${paneState.view === VIEW_PREVIEW ? "active" : ""}" data-pane-view="preview" title="Preview" aria-label="Preview">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <button class="pane-menu-button parked" data-pane-action="sync" title="Scroll interlock parked" aria-label="Scroll interlock parked" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
         </button>
-      </div>
-      <button class="pane-menu-button ${doc.layoutMode === "split" ? "active" : ""}" data-pane-action="split" title="Split panes" aria-label="Split panes">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="7" height="14" rx="2"/><rect x="13" y="5" width="7" height="14" rx="2"/></svg>
-      </button>
-      <button class="pane-menu-button parked" data-pane-action="sync" title="Scroll interlock parked" aria-label="Scroll interlock parked" disabled>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-      </button>
+        ${formattingToolbar}
       </div>`;
     header.querySelectorAll("[data-pane-view]").forEach((button) => {
       button.addEventListener("pointerdown", (event) => {
@@ -430,6 +397,13 @@ Code block
     header.querySelector("[data-pane-action='sync']")?.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
       setStatus("Scroll sync is parked for the foundation redesign");
+    });
+    header.querySelectorAll("[data-format-action]").forEach((button) => {
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        runPaneFormatAction(paneId, button.dataset.formatAction);
+      });
     });
     element.appendChild(header);
 
@@ -480,6 +454,51 @@ Code block
     }
 
     return node;
+  }
+
+  function buildPaneFormattingToolbar() {
+    const buttons = [
+      ["heading1", "H1", "Heading 1"],
+      ["heading2", "H2", "Heading 2"],
+      ["bullet", "UL", "Bullet list"],
+      ["numbered", "1.", "Numbered list"],
+      ["task", "Task", "Task item"],
+      ["bold", "B", "Bold"],
+      ["italic", "I", "Italic"],
+      ["underline", "U", "Underline"],
+      ["strike", "S", "Strikethrough"],
+      ["link", "Link", "Link"],
+      ["table", "Table", "Table"]
+    ];
+    return `<div class="pane-format-toolbar" role="group" aria-label="Formatting">${buttons
+      .map(([action, label, title]) => `<button type="button" data-format-action="${action}" title="${title}" aria-label="${title}">${label}</button>`)
+      .join("")}</div>`;
+  }
+
+  function runPaneFormatAction(paneId, action) {
+    const doc = getActiveDoc();
+    if (!doc || doc.panes[paneId]?.view !== VIEW_CODE) return;
+    setActivePane(paneId, false);
+    const commandByAction = {
+      heading1: slashCommands[0],
+      heading2: slashCommands[1],
+      bullet: slashCommands[4],
+      numbered: slashCommands[5],
+      task: slashCommands[6],
+      table: slashCommands.find((command) => command.marker === "table")
+    };
+    if (commandByAction[action]) {
+      applyLineCommand(commandByAction[action], false);
+      return;
+    }
+    const wrappers = {
+      bold: ["**", "**"],
+      italic: ["_", "_"],
+      underline: ["<u>", "</u>"],
+      strike: ["~~", "~~"],
+      link: ["[", "](url)"]
+    };
+    if (wrappers[action]) wrapCodeSelection(...wrappers[action]);
   }
 
   function bindTextarea(textarea, paneId) {
@@ -579,7 +598,6 @@ Code block
     paneNodes.forEach((node, id) => node.element.classList.toggle("active", id === paneId));
     updateToolbar();
     updateStatus();
-    syncInspectorFromPane(paneId);
     if (focusPane) paneNodes.get(paneId)?.textarea?.focus();
   }
 
@@ -1008,14 +1026,10 @@ Code block
   function updateToolbar() {
     const doc = getActiveDoc();
     const disabled = !doc;
-    [singleLayoutButton, splitLayoutButton, shareButton, topbarInspectorButton].forEach((button) => {
+    [shareButton, topbarInspectorButton].forEach((button) => {
       button.disabled = disabled;
     });
-    paneSyncButton.disabled = true;
     if (!doc) return;
-    singleLayoutButton.classList.toggle("active", doc.layoutMode === "single");
-    splitLayoutButton.classList.toggle("active", doc.layoutMode === "split");
-    paneSyncButton.classList.remove("active");
     topbarInspectorButton.classList.toggle("active", inspectorOpen);
     updateInspectorButtons();
   }
@@ -1072,7 +1086,7 @@ Code block
   function handlePaneScroll(paneId, textarea) {
     const doc = getActiveDoc();
     if (!doc) return;
-    if (paneSyncing || paneRefreshing) {
+    if (paneRefreshing) {
       const node = paneNodes.get(paneId);
       if (node?.lineNumbers) node.lineNumbers.scrollTop = textarea.scrollTop;
       return;
@@ -1087,7 +1101,7 @@ Code block
 
   function handlePreviewScroll(paneId, preview) {
     const doc = getActiveDoc();
-    if (!doc || paneSyncing || paneRefreshing) return;
+    if (!doc || paneRefreshing) return;
     const pane = doc.panes[paneId];
     doc.syncSourcePane = paneId;
     pane.sourceLine = getFirstVisibleSourceLine(preview);
@@ -2124,14 +2138,6 @@ Code block
     return 1;
   }
 
-  function syncOtherPanesFrom(sourcePaneId) {
-    void sourcePaneId;
-  }
-
-  function syncInspectorFromPane(paneId) {
-    void paneId;
-  }
-
   function scrollPreviewToLine(preview, line) {
     const target = preview.querySelector(`[data-source-line="${line}"]`) || findNearestSourceElement(preview, line);
     if (target) preview.scrollTop = target.offsetTop;
@@ -2395,7 +2401,11 @@ Code block
     if (setting === "showLineNumbers") showLineNumbers = event.target.checked;
     if (setting === "lineWrap") lineWrap = event.target.checked;
     applySettingsToDom();
-    updateAllPanes();
+    if (setting === "showFormattingToolbar") {
+      renderWorkspace();
+    } else {
+      updateAllPanes();
+    }
     queueSaveSettings();
     if (!activityPane.hidden && activeActivity === "settings") renderSettingsActivity();
   }
@@ -2492,11 +2502,6 @@ Code block
     document.getElementById("newTabButton").addEventListener("click", () => createDocument());
     emptyOpenButton.addEventListener("click", openFiles);
     emptyNewButton.addEventListener("click", () => createDocument());
-    singleLayoutButton.addEventListener("click", () => setLayoutMode("single"));
-    splitLayoutButton.addEventListener("click", toggleSplitLayout);
-    paneSyncButton.addEventListener("click", () => {
-      setStatus("Scroll sync is parked for the foundation redesign");
-    });
     activityToggleButton.addEventListener("click", toggleActivityRail);
     topbarInspectorButton.addEventListener("click", toggleInspector);
     inspectorInfoButton.addEventListener("click", () => setInspectorMode("info"));

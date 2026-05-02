@@ -16,20 +16,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 5v14"/></svg>
         </button>
         <div id="tabs" class="tabs" role="tablist"></div>
-        <div id="formatToolbar" class="format-toolbar" role="group" aria-label="Formatting toolbar" hidden></div>
         <div class="tab-actions" role="group" aria-label="Tab actions">
           <button id="newTabButton" class="icon-button" title="New document" aria-label="New document">+</button>
           <button id="shareButton" class="icon-button share-button" data-menu="share" title="Share or export" aria-label="Share or export">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 16V4M8 8l4-4 4 4"/></svg>
-          </button>
-          <button id="splitLayoutButton" class="icon-button pane-command-source" title="Split panes" aria-label="Split panes" hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="7" height="14" rx="2"/><rect x="13" y="5" width="7" height="14" rx="2"/></svg>
-          </button>
-          <button id="paneSyncButton" class="icon-button parked pane-command-source" title="Scroll sync parked" aria-label="Scroll sync parked" disabled hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/><path d="M17 17v4M14.5 18.5 17 21l2.5-2.5"/></svg>
-          </button>
-          <button id="singleLayoutButton" class="icon-button active pane-command-source" title="Single pane" aria-label="Single pane" hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
           </button>
         </div>
         <div class="topbar-actions">
@@ -43,10 +33,6 @@
       <div id="slashMenu" class="menu-panel slash-menu" hidden></div>
 
       <section class="workspace">
-        <div id="documentToolbar" class="document-toolbar" hidden>
-          <button class="disabled-text-control" type="button" disabled>Scroll sync parked</button>
-        </div>
-
         <aside class="activity-bar" aria-label="Activity bar">
           <button class="activity-button" data-activity="outline" title="Outline" aria-label="Outline">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h14"/></svg>

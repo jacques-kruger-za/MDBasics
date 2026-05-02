@@ -3,6 +3,50 @@
 ## Summary
 Rework MDBasics around a stable native-feeling shell, persistent settings, always-visible activity bar, CodeMirror 6 editor foundation, and parked scroll sync. The app remains Markdown-code-first; WYSIWYG and scroll anchoring are deferred.
 
+## Implementation Tracker
+
+Last updated: 2026-05-02
+
+### Completed In Current Foundation Build
+- Native-feeling shell baseline: app-icon menu, top tab strip, share/export entry point, inspector toggle, action strip, status strip, shell hairlines, and native window-control alignment.
+- Tab visual foundation: active/inactive tab contrast, no active-tab accent underline, close icon appears on hover/focus, dirty dot appears for unsaved documents, and unsaved close warning prompts Save / Don't Save / Cancel.
+- Activity strip and pane: Outline, Search, Recents, Settings; hover expansion; dock/pin behavior; resizable docked pane; persisted width and last selected tool.
+- Settings overlay: app-level modal overlay, click-only Settings activation, theme/accent/glass/editor/preview/font/editor options, and parked scroll-sync setting.
+- Pane layout foundation: single/split panes, independent Code/Preview state per pane, active pane glow dot, split-pane resize handle, pane controls in pane menubar, and unsplit preserves the pane where the action was triggered.
+- Formatting toolbar placement: optional toolbar moved into each code pane menubar; hidden unless `Show formatting toolbar` is enabled and that pane is in Code view.
+- Inspector foundation: Stats and Diff modes, app-level right inspector, resizable inspector width, changed-only Diff toggle, and outline moved out of inspector.
+- Parked scroll sync: runtime sync behavior disabled, dormant `src/modules/scroll-sync.js` boundary added, disabled lock icon shown in pane menubar, and disabled Settings item added.
+- Empty state: larger logo and Open Document / New Document options when no document is open.
+- Visual cleanup pass: action strip/status strip boundary ownership, floating menu shared styling, subdued hover accents, widened minimal scrollbars, and activity-pane hover position corrected.
+- Shell CSS token cleanup: app chrome, document surface, active/inactive tabs, action strip, inspector, status strip, shell hairlines, resize hairlines, hover tints, active accents, and muted text now route through named shell tokens while editor syntax tokens remain deferred to CodeMirror.
+- Build baseline: Windows installer builds successfully as `dist/MDBasics-0.1.2-Setup-x64.exe`.
+
+### Partially Implemented / Needs Hardening
+- Context menus exist for editor selection, insertion, formatting, and tables, but should be retested after CodeMirror because editor APIs will change.
+- Search/replace exists in the activity pane for active-document workflows, but needs deeper keyboard polish and result presentation hardening.
+- Per-file state persists zoom, layout, pane views, active pane, and inspector state by path; last active tab/window restore is not yet complete.
+- Formatting toolbar applies basic Markdown edits, but it does not yet reflect active formatting state; that depends on CodeMirror syntax/state awareness.
+- Line numbers are stable logical line numbers only. Wrapped-line alignment remains a known bug under aggressive wrapping, zoom, pane resize, and window resize.
+
+### Remaining Work Queue
+1. Replace the textarea editor with CodeMirror 6.
+2. Rebuild line numbers using CodeMirror gutters and delete the fragile textarea gutter assumptions.
+3. Port current Markdown editing behavior into CodeMirror: slash menu, Ctrl+B/I/U, block shortcuts, list continuation, table editing, context menus, undo/redo, and split-pane shared text.
+4. Add CodeMirror Markdown syntax styling profiles: None, Clean Markdown, Obsidian-like, VS Code-like, Minimal Writer.
+5. Add folding for headings, nested list sections, fenced code blocks, and tables.
+6. Make formatting toolbar buttons reflect active formatting state where CodeMirror can detect it.
+7. Finish per-file/session restore: last active tab, recent workspace state, and stronger persistence around reopened files.
+8. Harden Search/Replace UX after CodeMirror integration.
+9. Define the first supported user-customization surface after CodeMirror theme integration.
+10. Configure a real application icon so packaged builds no longer use the default Electron icon.
+
+### Known Bugs / Deferred Decisions
+- Textarea line numbers are intentionally not being improved further; CodeMirror owns the proper fix.
+- Scroll sync and scroll anchoring are parked. Controls remain visible but disabled.
+- App-icon menu feature set, shortcut labels, submenu sequencing, and type-to-filter reset behavior are parked for future workflow testing.
+- Pane-menu collapse into a `...` handler is logged as future UI work, not part of this pass.
+- WYSIWYG editing remains out of scope.
+
 ## Key Changes
 
 ### App Shell And Navigation

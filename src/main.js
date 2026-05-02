@@ -235,14 +235,16 @@ async function renderToPdf(html) {
     webPreferences: { sandbox: true }
   });
 
-  await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-  const pdf = await win.webContents.printToPDF({
-    printBackground: true,
-    margins: { marginType: "default" },
-    pageSize: "A4"
-  });
-  win.destroy();
-  return pdf;
+  try {
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    return await win.webContents.printToPDF({
+      printBackground: true,
+      margins: { marginType: "default" },
+      pageSize: "A4"
+    });
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
 }
 
 async function printHtml(html) {
@@ -251,17 +253,20 @@ async function printHtml(html) {
     webPreferences: { sandbox: true }
   });
 
-  await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-  return new Promise((resolve, reject) => {
-    win.webContents.print({ printBackground: true }, (success, failureReason) => {
-      win.destroy();
-      if (!success && failureReason) {
-        reject(new Error(failureReason));
-      } else {
-        resolve({ printed: success });
-      }
+  try {
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    return await new Promise((resolve, reject) => {
+      win.webContents.print({ printBackground: true }, (success, failureReason) => {
+        if (!success && failureReason) {
+          reject(new Error(failureReason));
+        } else {
+          resolve({ printed: success });
+        }
+      });
     });
-  });
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
 }
 
 async function exportWordWithPandoc(markdown, outputPath) {
