@@ -9,68 +9,117 @@
   <body>
     <div id="app">
       <header class="topbar">
-        <div class="app-mark" aria-hidden="true">M</div>
-        <nav class="menu" aria-label="Application menu">
-          <button data-menu="file">File</button>
-          <button data-menu="edit">Edit</button>
-          <button data-menu="view">View</button>
-          <button data-menu="settings">Settings</button>
-        </nav>
+        <button id="appMenuButton" class="app-menu-button" data-menu="app" title="MDBasics menu" aria-label="MDBasics menu">
+          <span class="app-mark" aria-hidden="true">M</span>
+        </button>
+        <button id="activityToggleButton" class="icon-button rail-toggle" title="Activity bar" aria-label="Activity bar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 5v14"/></svg>
+        </button>
+        <div id="tabs" class="tabs" role="tablist"></div>
+        <div id="formatToolbar" class="format-toolbar" role="group" aria-label="Formatting toolbar" hidden></div>
+        <div class="tab-actions" role="group" aria-label="Tab actions">
+          <button id="newTabButton" class="icon-button" title="New document" aria-label="New document">+</button>
+          <button id="shareButton" class="icon-button share-button" data-menu="share" title="Share or export" aria-label="Share or export">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 16V4M8 8l4-4 4 4"/></svg>
+          </button>
+          <button id="splitLayoutButton" class="icon-button pane-command-source" title="Split panes" aria-label="Split panes" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="7" height="14" rx="2"/><rect x="13" y="5" width="7" height="14" rx="2"/></svg>
+          </button>
+          <button id="paneSyncButton" class="icon-button parked pane-command-source" title="Scroll sync parked" aria-label="Scroll sync parked" disabled hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/><path d="M17 17v4M14.5 18.5 17 21l2.5-2.5"/></svg>
+          </button>
+          <button id="singleLayoutButton" class="icon-button active pane-command-source" title="Single pane" aria-label="Single pane" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+          </button>
+        </div>
+        <div class="topbar-actions">
+          <button id="topbarInspectorButton" class="icon-button" title="Inspector" aria-label="Inspector">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M15 5v14"/></svg>
+          </button>
+        </div>
       </header>
       <div id="menuPanel" class="menu-panel" hidden></div>
       <div id="contextMenu" class="menu-panel context-menu" hidden></div>
       <div id="slashMenu" class="menu-panel slash-menu" hidden></div>
 
       <section class="workspace">
-        <div class="tabs-row">
-          <div id="tabs" class="tabs" role="tablist"></div>
-          <button id="newTabButton" class="new-tab" title="New document" aria-label="New document">+</button>
+        <div id="documentToolbar" class="document-toolbar" hidden>
+          <button class="disabled-text-control" type="button" disabled>Scroll sync parked</button>
         </div>
-        <div id="documentToolbar" class="document-toolbar">
-          <div class="toolbar-group" role="group" aria-label="Pane layout">
-            <button id="singleLayoutButton" class="icon-button active" title="Single pane" aria-label="Single pane">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+
+        <aside class="activity-bar" aria-label="Activity bar">
+          <button class="activity-button" data-activity="outline" title="Outline" aria-label="Outline">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
+          </button>
+          <button class="activity-button" data-activity="search" title="Search" aria-label="Search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg>
+          </button>
+          <button class="activity-button" data-activity="recents" title="Recents" aria-label="Recents">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5l3 2"/><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/></svg>
+          </button>
+          <button class="activity-button activity-settings" data-activity="settings" title="Settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="11" cy="18" r="2"/></svg>
+          </button>
+        </aside>
+        <aside id="activityPane" class="activity-pane" aria-label="Activity pane" hidden>
+          <div class="activity-pane-header">
+            <span id="activityPaneTitle">Outline</span>
+            <button id="activityPaneDockButton" class="icon-button" title="Dock activity pane" aria-label="Dock activity pane">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v5"/><path d="M8 3h8l-1 7 3 3v2H6v-2l3-3Z"/></svg>
             </button>
-            <button id="splitLayoutButton" class="icon-button" title="Split panes" aria-label="Split panes">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="7" height="14" rx="2"/><rect x="13" y="5" width="7" height="14" rx="2"/></svg>
+            <button id="activityPaneCloseButton" class="icon-button" title="Close activity pane" aria-label="Close activity pane">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
             </button>
           </div>
-          <div id="paneSelector" class="toolbar-group" role="group" aria-label="Active pane">
-            <button id="primaryPaneButton" class="active" type="button">Left</button>
-            <button id="secondaryPaneButton" type="button">Right</button>
+          <section id="activityPaneContent" class="activity-pane-content"></section>
+          <div id="activityResizeHandle" class="activity-resize-handle" aria-hidden="true"></div>
+        </aside>
+
+        <section id="settingsOverlay" class="settings-overlay" aria-label="Settings" hidden>
+          <div class="settings-dialog">
+            <div class="settings-dialog-header">
+              <h2>Settings</h2>
+              <button id="settingsOverlayCloseButton" class="icon-button" title="Close settings" aria-label="Close settings">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+            <div class="settings-dialog-body">
+              <nav class="settings-nav" aria-label="Settings sections">
+                <button type="button" class="active">Appearance</button>
+                <button type="button">Editor</button>
+                <button type="button">Preview</button>
+                <button type="button">Files</button>
+              </nav>
+              <section id="settingsOverlayContent" class="settings-overlay-content"></section>
+            </div>
           </div>
-          <div class="toolbar-group" role="group" aria-label="Pane view">
-            <button id="paneCodeButton" class="icon-button active" title="Code" aria-label="Code">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
-            </button>
-            <button id="panePreviewButton" class="icon-button" title="Preview" aria-label="Preview">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-          <button id="paneSyncButton" class="icon-button" title="Sync panes" aria-label="Sync panes">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"/><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"/></svg>
-          </button>
-          <button id="diffInspectorButton" class="icon-button" title="Diff inspector" aria-label="Diff inspector">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h7M6 16h7M17 6v12M15 8h4M15 16h4"/></svg>
-          </button>
-          <button id="diffFollowButton" class="icon-button" title="Diff follows pane" aria-label="Diff follows pane">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          </button>
-        </div>
+        </section>
 
         <main class="editor-shell">
           <section id="emptyState" class="empty-state" hidden>
             <div class="empty-icon">M</div>
-            <button id="emptyOpenButton">Open Markdown File</button>
+            <div class="empty-actions">
+              <button id="emptyOpenButton">Open Document</button>
+              <button id="emptyNewButton">New Document</button>
+            </div>
           </section>
           <div id="workspaceSurface" class="workspace-surface">
             <section id="paneArea" class="pane-area" aria-label="Document panes"></section>
             <aside id="rightInspector" class="right-inspector" aria-label="Right inspector" hidden>
               <div class="inspector-header">
-                <span>Diff</span>
-                <button id="closeInspectorButton" class="icon-button" title="Close inspector" aria-label="Close inspector">×</button>
+                <div class="inspector-tabs" role="tablist" aria-label="Inspector mode">
+                  <button id="inspectorInfoButton" type="button">Stats</button>
+                  <button id="inspectorDiffButton" type="button">Diff</button>
+                </div>
+                <button id="diffChangedOnlyButton" class="inspector-filter diff-switch" type="button">
+                  <span>All</span><span>Diff</span>
+                </button>
+                <button id="closeInspectorButton" class="icon-button" title="Collapse inspector" aria-label="Collapse inspector">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
               </div>
-              <section id="diffInspectorContent" class="diff-view"></section>
+              <section id="diffInspectorContent" class="inspector-content"></section>
+              <div id="inspectorResizeHandle" class="inspector-resize-handle" aria-hidden="true"></div>
             </aside>
           </div>
         </main>

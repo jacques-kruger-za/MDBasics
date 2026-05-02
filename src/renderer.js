@@ -7,6 +7,12 @@
   const zoomLevelEl = document.getElementById("zoomLevel");
   const emptyState = document.getElementById("emptyState");
   const emptyOpenButton = document.getElementById("emptyOpenButton");
+  const emptyNewButton = document.getElementById("emptyNewButton");
+  const workspaceSurface = document.getElementById("workspaceSurface");
+  const appMenuButton = document.getElementById("appMenuButton");
+  const activityToggleButton = document.getElementById("activityToggleButton");
+  const shareButton = document.getElementById("shareButton");
+  const formatToolbar = document.getElementById("formatToolbar");
   const menuPanel = document.getElementById("menuPanel");
   const contextMenu = document.getElementById("contextMenu");
   const slashMenu = document.getElementById("slashMenu");
@@ -14,18 +20,28 @@
   const paneArea = document.getElementById("paneArea");
   const rightInspector = document.getElementById("rightInspector");
   const diffInspectorContent = document.getElementById("diffInspectorContent");
+  const topbarInspectorButton = document.getElementById("topbarInspectorButton");
 
   const singleLayoutButton = document.getElementById("singleLayoutButton");
   const splitLayoutButton = document.getElementById("splitLayoutButton");
-  const paneSelector = document.getElementById("paneSelector");
-  const primaryPaneButton = document.getElementById("primaryPaneButton");
-  const secondaryPaneButton = document.getElementById("secondaryPaneButton");
-  const paneCodeButton = document.getElementById("paneCodeButton");
-  const panePreviewButton = document.getElementById("panePreviewButton");
   const paneSyncButton = document.getElementById("paneSyncButton");
-  const diffInspectorButton = document.getElementById("diffInspectorButton");
-  const diffFollowButton = document.getElementById("diffFollowButton");
+  const inspectorInfoButton = document.getElementById("inspectorInfoButton");
+  const inspectorDiffButton = document.getElementById("inspectorDiffButton");
+  const diffChangedOnlyButton = document.getElementById("diffChangedOnlyButton");
   const closeInspectorButton = document.getElementById("closeInspectorButton");
+  const inspectorResizeHandle = document.getElementById("inspectorResizeHandle");
+  const activityPane = document.getElementById("activityPane");
+  const activityPaneTitle = document.getElementById("activityPaneTitle");
+  const activityPaneContent = document.getElementById("activityPaneContent");
+  const activityPaneCloseButton = document.getElementById("activityPaneCloseButton");
+  const activityPaneDockButton = document.getElementById("activityPaneDockButton");
+  const activityResizeHandle = document.getElementById("activityResizeHandle");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsOverlayContent = document.getElementById("settingsOverlayContent");
+  const settingsOverlayCloseButton = document.getElementById("settingsOverlayCloseButton");
+
+  inspectorInfoButton.dataset.inspectorMode = "info";
+  inspectorDiffButton.dataset.inspectorMode = "diff";
 
   const PANE_PRIMARY = "primary";
   const PANE_SECONDARY = "secondary";
@@ -37,7 +53,6 @@
   let applyingHistory = false;
   let lineWrap = true;
   let showLineNumbers = false;
-  let editorZoom = 100;
   let activeMenuName = null;
   let menuSearch = "";
   let menuSearchTimer = null;
@@ -47,8 +62,40 @@
   let contextFloatingMenus = [];
   let submenuCloseTimer = null;
   let inspectorOpen = false;
-  let diffFollowLocked = true;
+  let inspectorMode = "info";
+  let diffChangedOnly = true;
   let paneSyncing = false;
+  let paneRefreshing = false;
+  let activityOpen = false;
+  let activityRailVisible = false;
+  let activeActivity = "outline";
+  let activityPinned = false;
+  let activityResize = null;
+  let inspectorResize = null;
+  let paneResize = null;
+  let searchQuery = "";
+  let replaceQuery = "";
+  let searchOptions = { caseSensitive: false, wholeWord: false, regex: false };
+  let searchMatches = [];
+  let activeSearchIndex = 0;
+  let recentFiles = [];
+  let appSettings = {
+    theme: "dark",
+    accentColor: "#68d8c1",
+    glass: false,
+    editorFont: "Cascadia Code",
+    previewFont: "Segoe UI",
+    showFormattingToolbar: false,
+    showLineNumbers: false,
+    lineWrap: true,
+    scrollSyncAllowed: false,
+    activityRailVisible: false,
+    activityPaneWidth: 280,
+    inspectorWidth: 360,
+    lastActivityTool: "outline",
+    recentFiles: [],
+    fileStates: {}
+  };
 
   const paneNodes = new Map();
   const defaultGhostText = `# Heading 1
@@ -93,7 +140,55 @@ Code block
   }
 
   bindEvents();
-  createDocument({ text: "" });
+  boot();
+
+  async function boot() {
+    await loadAppSettings();
+    createDocument({ text: "" });
+  }
+
+  async function loadAppSettings() {
+    try {
+      const loaded = await window.mdb.loadSettings();
+      appSettings = { ...appSettings, ...loaded };
+      recentFiles = Array.isArray(appSettings.recentFiles) ? appSettings.recentFiles : [];
+      lineWrap = appSettings.lineWrap !== false;
+      showLineNumbers = Boolean(appSettings.showLineNumbers);
+      activityRailVisible = Boolean(appSettings.activityRailVisible);
+      activeActivity = appSettings.lastActivityTool || "outline";
+      applySettingsToDom();
+    } catch (error) {
+      console.error(error);
+      setStatus("Settings unavailable");
+    }
+  }
+
+  function applySettingsToDom() {
+    const lightTheme = ["light", "github-light", "catppuccin-latte"].includes(appSettings.theme);
+    document.body.dataset.theme = appSettings.theme || "dark";
+    document.body.classList.toggle("light", lightTheme);
+    document.body.classList.toggle("glass", Boolean(appSettings.glass));
+    document.body.classList.toggle("activity-pinned", activityRailVisible && activityOpen && activityPinned);
+    document.documentElement.style.setProperty("--accent", appSettings.accentColor || "#68d8c1");
+    document.documentElement.style.setProperty("--activity-pane-width", `${clamp(Number(appSettings.activityPaneWidth) || 280, 220, 520)}px`);
+    document.documentElement.style.setProperty("--inspector-width", `${clamp(Number(appSettings.inspectorWidth) || 360, 280, 620)}px`);
+    document.documentElement.style.setProperty("--editor-font", `"${appSettings.editorFont || "Cascadia Code"}", "SFMono-Regular", Consolas, monospace`);
+    document.documentElement.style.setProperty("--preview-font", `"${appSettings.previewFont || "Segoe UI"}", Inter, ui-sans-serif, system-ui, sans-serif`);
+    formatToolbar.hidden = !appSettings.showFormattingToolbar;
+    document.body.classList.toggle("activity-visible", activityRailVisible);
+    activityToggleButton.classList.toggle("active", activityRailVisible);
+    window.mdb.setTitlebarTheme(lightTheme ? "light" : "dark");
+  }
+
+  function queueSaveSettings() {
+    appSettings.lineWrap = lineWrap;
+    appSettings.showLineNumbers = showLineNumbers;
+    appSettings.lastActivityTool = activeActivity;
+    appSettings.activityRailVisible = activityRailVisible;
+    appSettings.inspectorWidth = Number(appSettings.inspectorWidth) || 360;
+    appSettings.recentFiles = recentFiles;
+    window.mdb.saveSettings(appSettings).catch((error) => console.error(error));
+  }
 
   function createPaneState(view = VIEW_CODE) {
     return { view, cursor: 0, selectionEnd: 0, scrollTop: 0, sourceLine: 1 };
@@ -111,14 +206,49 @@ Code block
       dirty: false,
       layoutMode: "single",
       activePane: PANE_PRIMARY,
-      paneSyncLocked: true,
+      splitRatio: 0.5,
+      paneSyncLocked: false,
+      syncSourcePane: PANE_PRIMARY,
+      zoom: 100,
       panes: {
         primary: createPaneState(VIEW_CODE),
         secondary: createPaneState(VIEW_PREVIEW)
       }
     };
     documents.push(doc);
+    applyPersistedFileState(doc);
     setActive(doc.id);
+  }
+
+  function applyPersistedFileState(doc) {
+    const state = doc.filePath ? appSettings.fileStates?.[doc.filePath] : null;
+    if (!state) return;
+    doc.zoom = state.zoom || doc.zoom;
+    doc.layoutMode = state.layoutMode || doc.layoutMode;
+    doc.splitRatio = typeof state.splitRatio === "number" ? state.splitRatio : doc.splitRatio;
+    doc.activePane = state.activePane || doc.activePane;
+    doc.panes.primary.view = state.panes?.primary?.view || doc.panes.primary.view;
+    doc.panes.secondary.view = state.panes?.secondary?.view || doc.panes.secondary.view;
+    inspectorOpen = Boolean(state.inspectorOpen);
+    inspectorMode = state.inspectorMode === "diff" ? "diff" : "info";
+  }
+
+  function persistFileState(doc = getActiveDoc()) {
+    if (!doc?.filePath) return;
+    appSettings.fileStates = appSettings.fileStates || {};
+    appSettings.fileStates[doc.filePath] = {
+      zoom: doc.zoom,
+      layoutMode: doc.layoutMode,
+      splitRatio: doc.splitRatio,
+      activePane: doc.activePane,
+      panes: {
+        primary: { view: doc.panes.primary.view },
+        secondary: { view: doc.panes.secondary.view }
+      },
+      inspectorOpen,
+      inspectorMode
+    };
+    queueSaveSettings();
   }
 
   function getActiveDoc() {
@@ -151,6 +281,7 @@ Code block
 
   function renderApp() {
     renderTabs();
+    renderFormatToolbar();
     renderWorkspace();
     updateToolbar();
     updateStatus();
@@ -161,10 +292,13 @@ Code block
     tabsEl.innerHTML = "";
     documents.forEach((item) => {
       const tab = document.createElement("div");
-      tab.className = `tab ${item.id === activeId ? "active" : ""}`;
+      tab.className = `tab ${item.id === activeId ? "active" : ""} ${item.dirty ? "dirty" : ""}`;
       tab.role = "tab";
       tab.title = item.filePath || item.title;
-      tab.innerHTML = `<button class="tab-title" type="button">${escapeHtml(item.title)}${item.dirty ? " *" : ""}</button><button class="tab-close" type="button" aria-label="Close ${escapeHtml(item.title)}">×</button>`;
+      tab.innerHTML = `
+        <button class="tab-title" type="button">${escapeHtml(item.title)}</button>
+        <span class="tab-dirty-dot" aria-hidden="true"></span>
+        <button class="tab-close" type="button" aria-label="Close ${escapeHtml(item.title)}">×</button>`;
       tab.addEventListener("click", (event) => {
         if (event.target.classList.contains("tab-close")) {
           closeDocument(item.id);
@@ -174,30 +308,86 @@ Code block
       });
       tabsEl.appendChild(tab);
     });
+    const addTab = document.createElement("button");
+    addTab.className = "new-tab inline-new-tab";
+    addTab.type = "button";
+    addTab.title = "New document";
+    addTab.setAttribute("aria-label", "New document");
+    addTab.textContent = "+";
+    addTab.addEventListener("click", () => createDocument());
+    tabsEl.appendChild(addTab);
 
-    filePathEl.textContent = doc?.filePath || doc?.title || "No document";
+    filePathEl.textContent = "";
+    statusMessage.textContent = "";
     emptyState.hidden = Boolean(doc);
-    documentToolbar.hidden = !doc;
+    documentToolbar.hidden = true;
+  }
+
+  function renderFormatToolbar() {
+    formatToolbar.hidden = !appSettings.showFormattingToolbar;
+    if (formatToolbar.hidden) return;
+    const buttons = [
+      ["H1", () => applyLineCommand(slashCommands[0], false)],
+      ["H2", () => applyLineCommand(slashCommands[1], false)],
+      ["UL", () => applyLineCommand(slashCommands[4], false)],
+      ["1.", () => applyLineCommand(slashCommands[5], false)],
+      ["Task", () => applyLineCommand(slashCommands[6], false)],
+      ["B", () => wrapCodeSelection("**", "**")],
+      ["I", () => wrapCodeSelection("_", "_")],
+      ["U", () => wrapCodeSelection("<u>", "</u>")],
+      ["S", () => wrapCodeSelection("~~", "~~")],
+      ["Link", () => wrapCodeSelection("[", "](url)")],
+      ["Table", () => applyLineCommand(slashCommands[9], false)]
+    ];
+    formatToolbar.innerHTML = "";
+    buttons.forEach(([label, action]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.addEventListener("click", action);
+      formatToolbar.appendChild(button);
+    });
   }
 
   function renderWorkspace() {
     const doc = getActiveDoc();
     paneNodes.clear();
     paneArea.innerHTML = "";
-    paneArea.className = `pane-area ${doc?.layoutMode === "split" ? "split" : "single"}`;
+    updatePaneAreaMode(doc);
     if (!doc) {
       rightInspector.hidden = true;
+      workspaceSurface.hidden = true;
       return;
     }
+    workspaceSurface.hidden = false;
 
     getVisiblePaneIds(doc).forEach((paneId) => {
       const pane = buildPane(doc, paneId);
       paneArea.appendChild(pane.element);
       paneNodes.set(paneId, pane);
     });
-
+    if (doc.layoutMode === "split") {
+      const divider = document.createElement("div");
+      divider.className = "pane-resize-handle";
+      divider.setAttribute("aria-hidden", "true");
+      divider.addEventListener("pointerdown", startPaneResize);
+      paneArea.appendChild(divider);
+    }
     updateAllPanes({ preserveFocus: false });
     renderInspector();
+    renderActivityPane();
+  }
+
+  function updatePaneAreaMode(doc = getActiveDoc()) {
+    paneArea.className = `pane-area ${doc?.layoutMode === "split" ? "split" : "single"} free`;
+    if (doc?.layoutMode === "split") {
+      const ratio = clamp(doc.splitRatio || 0.5, 0.25, 0.75);
+      paneArea.style.setProperty("--split-left", `${ratio * 100}%`);
+      paneArea.style.setProperty("--split-right", `${(1 - ratio) * 100}%`);
+    } else {
+      paneArea.style.removeProperty("--split-left");
+      paneArea.style.removeProperty("--split-right");
+    }
   }
 
   function buildPane(doc, paneId) {
@@ -206,11 +396,48 @@ Code block
     element.className = `doc-pane ${doc.activePane === paneId ? "active" : ""}`;
     element.dataset.pane = paneId;
 
+    const header = document.createElement("div");
+    header.className = "pane-header";
+    header.innerHTML = `
+      <span class="pane-active-dot" title="Active pane" aria-label="Active pane"></span>
+      <div class="pane-menu" role="group" aria-label="${paneId === PANE_PRIMARY ? "Left" : "Right"} pane controls">
+      <div class="pane-view-toggle segmented-control" role="group" aria-label="${paneId === PANE_PRIMARY ? "Left" : "Right"} pane view">
+        <button class="pane-view-button ${paneState.view === VIEW_CODE ? "active" : ""}" data-pane-view="code" title="Code" aria-label="Code">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
+        </button>
+        <button class="pane-view-button ${paneState.view === VIEW_PREVIEW ? "active" : ""}" data-pane-view="preview" title="Preview" aria-label="Preview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <button class="pane-menu-button ${doc.layoutMode === "split" ? "active" : ""}" data-pane-action="split" title="Split panes" aria-label="Split panes">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="7" height="14" rx="2"/><rect x="13" y="5" width="7" height="14" rx="2"/></svg>
+      </button>
+      <button class="pane-menu-button parked" data-pane-action="sync" title="Scroll interlock parked" aria-label="Scroll interlock parked" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      </button>
+      </div>`;
+    header.querySelectorAll("[data-pane-view]").forEach((button) => {
+      button.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        setPaneView(paneId, button.dataset.paneView);
+      });
+    });
+    header.querySelector("[data-pane-action='split']")?.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      setActivePane(paneId, false);
+      toggleSplitLayout();
+    });
+    header.querySelector("[data-pane-action='sync']")?.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      setStatus("Scroll sync is parked for the foundation redesign");
+    });
+    element.appendChild(header);
+
     const body = document.createElement("div");
     body.className = "pane-body";
     element.appendChild(body);
 
-    const node = { element, body, paneId, textarea: null, lineNumbers: null, ghostText: null, preview: null };
+    const node = { element, body, paneId, wrap: null, textarea: null, lineNumbers: null, ghostText: null, preview: null };
 
     element.addEventListener("pointerdown", () => {
       setActivePane(paneId, false);
@@ -219,7 +446,7 @@ Code block
     if (paneState.view === VIEW_CODE) {
       const wrap = document.createElement("div");
       wrap.className = `code-editor-wrap pane-code ${showLineNumbers ? "show-lines" : ""}`;
-      wrap.style.setProperty("--editor-font-size", `${15 * (editorZoom / 100)}px`);
+      wrap.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
       if (!lineWrap) wrap.classList.add("no-wrap");
 
       const lineNumbers = document.createElement("pre");
@@ -238,6 +465,7 @@ Code block
       wrap.appendChild(ghostText);
       body.appendChild(wrap);
 
+      node.wrap = wrap;
       node.textarea = textarea;
       node.lineNumbers = lineNumbers;
       node.ghostText = ghostText;
@@ -267,7 +495,7 @@ Code block
     textarea.addEventListener("wheel", (event) => {
       if (!event.ctrlKey) return;
       event.preventDefault();
-      setEditorZoom(editorZoom + (event.deltaY < 0 ? 10 : -10));
+      setEditorZoom(getDocZoom() + (event.deltaY < 0 ? 10 : -10));
     }, { passive: false });
     textarea.addEventListener("contextmenu", showContextMenu);
     textarea.addEventListener("keydown", handleCodeKeydown);
@@ -281,8 +509,6 @@ Code block
       if (!block) return;
       const doc = getActiveDoc();
       doc.panes[paneId].sourceLine = Number(block.dataset.sourceLine || 1);
-      syncOtherPanesFrom(paneId);
-      syncInspectorFromPane(paneId);
     });
   }
 
@@ -291,14 +517,19 @@ Code block
     if (!doc) return;
     const focusedPaneId = preserveFocus ? doc.activePane : null;
 
-    paneNodes.forEach((node, paneId) => {
-      const state = doc.panes[paneId];
-      if (state.view === VIEW_CODE) {
-        updateCodePane(node, state, doc);
-      } else {
-        updatePreviewPane(node, state, doc);
-      }
-    });
+    paneRefreshing = true;
+    try {
+      paneNodes.forEach((node, paneId) => {
+        const state = doc.panes[paneId];
+        if (state.view === VIEW_CODE) {
+          updateCodePane(node, state, doc);
+        } else {
+          updatePreviewPane(node, state, doc);
+        }
+      });
+    } finally {
+      paneRefreshing = false;
+    }
 
     if (focusedPaneId) {
       const node = paneNodes.get(focusedPaneId);
@@ -309,22 +540,26 @@ Code block
   }
 
   function updateCodePane(node, state, doc) {
+    const previousScrollTop = node.textarea.scrollTop;
+    const previousScrollLeft = node.textarea.scrollLeft;
+    const previousSelectionStart = node.textarea.selectionStart;
+    const previousSelectionEnd = node.textarea.selectionEnd;
+    const wasFocused = document.activeElement === node.textarea;
     if (node.textarea.value !== doc.text) node.textarea.value = doc.text;
     const cursor = Math.min(state.cursor, doc.text.length);
     const selectionEnd = Math.min(state.selectionEnd ?? cursor, doc.text.length);
-    if (document.activeElement !== node.textarea) {
-      node.textarea.selectionStart = cursor;
-      node.textarea.selectionEnd = selectionEnd;
+    if (!wasFocused) {
+      node.textarea.selectionStart = Math.min(previousSelectionStart ?? cursor, doc.text.length);
+      node.textarea.selectionEnd = Math.min(previousSelectionEnd ?? selectionEnd, doc.text.length);
     }
     node.textarea.classList.toggle("no-wrap", !lineWrap);
-    node.textarea.style.setProperty("--editor-font-size", `${15 * (editorZoom / 100)}px`);
-    node.textarea.scrollTop = state.scrollTop || 0;
-    if (node.lineNumbers) {
-      node.lineNumbers.textContent = showLineNumbers
-        ? Array.from({ length: Math.max(1, doc.text.split(/\r?\n/).length) }, (_item, index) => String(index + 1)).join("\n")
-        : "";
-      node.lineNumbers.scrollTop = node.textarea.scrollTop;
-    }
+    node.wrap?.classList.toggle("show-lines", showLineNumbers);
+    node.wrap?.classList.toggle("no-wrap", !lineWrap);
+    node.wrap?.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
+    node.textarea.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
+    node.textarea.scrollTop = wasFocused ? previousScrollTop : state.scrollTop ?? previousScrollTop ?? 0;
+    node.textarea.scrollLeft = previousScrollLeft || 0;
+    updateLineNumbers(node, doc);
     if (node.ghostText) {
       const showGhost = doc.text.length === 0;
       node.ghostText.textContent = showGhost ? defaultGhostText : "";
@@ -344,6 +579,7 @@ Code block
     paneNodes.forEach((node, id) => node.element.classList.toggle("active", id === paneId));
     updateToolbar();
     updateStatus();
+    syncInspectorFromPane(paneId);
     if (focusPane) paneNodes.get(paneId)?.textarea?.focus();
   }
 
@@ -353,14 +589,30 @@ Code block
     doc.layoutMode = mode;
     if (mode === "single" && !doc.panes[doc.activePane]) doc.activePane = PANE_PRIMARY;
     renderApp();
+    persistFileState(doc);
     setStatus(mode === "split" ? "Split panes active" : "Single pane active");
+  }
+
+  function toggleSplitLayout() {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    setLayoutMode(doc.layoutMode === "split" ? "single" : "split");
   }
 
   function setActivePaneView(view) {
     const doc = getActiveDoc();
     if (!doc) return;
-    doc.panes[doc.activePane].view = view;
+    setPaneView(doc.activePane, view);
+  }
+
+  function setPaneView(paneId, view) {
+    const doc = getActiveDoc();
+    if (!doc || !doc.panes[paneId]) return;
+    doc.panes[paneId].view = view;
+    doc.activePane = paneId;
+    doc.syncSourcePane = paneId;
     renderApp();
+    persistFileState(doc);
     setStatus(view === VIEW_CODE ? "Pane set to Code" : "Pane set to Preview");
   }
 
@@ -368,52 +620,429 @@ Code block
     inspectorOpen = !inspectorOpen;
     renderInspector();
     updateToolbar();
-    setStatus(inspectorOpen ? "Diff inspector open" : "Diff inspector closed");
+    persistFileState();
+    setStatus(inspectorOpen ? "Inspector open" : "Inspector closed");
+  }
+
+  function setInspectorMode(mode) {
+    inspectorMode = mode;
+    inspectorOpen = true;
+    renderInspector();
+    updateToolbar();
+    persistFileState();
   }
 
   function renderInspector() {
     const doc = getActiveDoc();
     rightInspector.hidden = !doc || !inspectorOpen;
     if (!doc || !inspectorOpen) return;
-    diffInspectorContent.innerHTML = window.MDBasicsDiff.buildLineDiff(doc.savedText || "", doc.text || "", escapeHtml);
-    if (diffFollowLocked) syncInspectorFromPane(doc.activePane);
+    updateInspectorButtons();
+    if (inspectorMode === "info") {
+      diffInspectorContent.className = "inspector-content";
+      diffInspectorContent.innerHTML = buildFileStats(doc);
+      return;
+    }
+    diffInspectorContent.className = "inspector-content diff-view";
+    diffInspectorContent.innerHTML = window.MDBasicsDiff.buildLineDiff(doc.savedText || "", doc.text || "", escapeHtml, {
+      changesOnly: diffChangedOnly
+    });
+  }
+
+  function updateInspectorButtons() {
+    [inspectorInfoButton, inspectorDiffButton].forEach((button) => {
+      if (!button) return;
+      button.classList.toggle("active", button.dataset.inspectorMode === inspectorMode);
+    });
+    if (diffChangedOnlyButton) {
+      diffChangedOnlyButton.hidden = inspectorMode !== "diff";
+      diffChangedOnlyButton.classList.toggle("active", diffChangedOnly);
+    }
+  }
+
+  function buildFileStats(doc) {
+    const stats = getDocumentStats(doc.text);
+    return `
+      <div class="inspector-panel">
+        <h2>${escapeHtml(doc.title || "Untitled")}</h2>
+        <dl>
+          <dt>Status</dt><dd>${doc.dirty ? "Unsaved changes" : "Saved"}</dd>
+          <dt>Characters</dt><dd>${stats.characters}</dd>
+          <dt>Words</dt><dd>${stats.words}</dd>
+          <dt>Lines</dt><dd>${stats.lines}</dd>
+          <dt>Paragraphs</dt><dd>${stats.paragraphs}</dd>
+          <dt>Headings</dt><dd>${stats.headings}</dd>
+          <dt>Tasks</dt><dd>${stats.tasksDone} / ${stats.tasksTotal}</dd>
+          <dt>Tables</dt><dd>${stats.tables}</dd>
+          <dt>Links</dt><dd>${stats.links}</dd>
+          <dt>Top words</dt><dd>${stats.topWords.length ? stats.topWords.map((item) => `${escapeHtml(item.word)} (${item.count})`).join(", ") : "None"}</dd>
+          <dt>Path</dt><dd>${doc.filePath ? escapeHtml(doc.filePath) : "Untitled document"}</dd>
+        </dl>
+      </div>`;
+  }
+
+  function getDocumentStats(text) {
+    const lines = text.length ? text.split(/\r?\n/) : [];
+    const words = text.match(/[A-Za-z0-9']+/g) || [];
+    const paragraphs = text.split(/\n\s*\n/).filter((block) => block.trim() && !/^\s*#{1,6}\s/m.test(block)).length;
+    const headings = lines.filter((line) => /^(#{1,6})\s+/.test(line)).length;
+    const tasks = lines.filter((line) => /^\s*[-*+]\s+\[[ xX]\]\s+/.test(line));
+    const tables = countMarkdownTables(lines);
+    const links = (text.match(/\[[^\]]+\]\([^)]+\)/g) || []).length;
+    const stopWords = new Set(["the", "and", "for", "with", "that", "this", "from", "you", "your", "are", "was", "were", "have", "has", "but", "not", "can", "will", "into", "its", "a", "an", "of", "to", "in", "on", "is", "as", "by", "or", "be"]);
+    const frequencies = new Map();
+    words.forEach((word) => {
+      const normalized = word.toLowerCase();
+      if (normalized.length < 3 || stopWords.has(normalized)) return;
+      frequencies.set(normalized, (frequencies.get(normalized) || 0) + 1);
+    });
+    return {
+      characters: text.length,
+      words: words.length,
+      lines: lines.length,
+      paragraphs,
+      headings,
+      tasksTotal: tasks.length,
+      tasksDone: tasks.filter((line) => /\[[xX]\]/.test(line)).length,
+      tables,
+      links,
+      topWords: Array.from(frequencies, ([word, count]) => ({ word, count }))
+        .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
+        .slice(0, 5)
+    };
+  }
+
+  function countMarkdownTables(lines) {
+    let count = 0;
+    for (let index = 0; index < lines.length - 1; index += 1) {
+      if (/\|/.test(lines[index]) && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[index + 1])) count += 1;
+    }
+    return count;
+  }
+
+  function buildFileIndex(doc) {
+    const headings = doc.text.split(/\r?\n/).map((line, index) => {
+      const match = line.match(/^(#{1,6})\s+(.+)$/);
+      if (!match) return null;
+      return { level: match[1].length, text: match[2].replace(/\s+#+\s*$/, ""), line: index + 1 };
+    }).filter(Boolean);
+
+    if (!headings.length) {
+      return `<div class="inspector-empty">No headings in this document.</div>`;
+    }
+
+    return `<ol class="file-index">${headings.map((heading) => `
+      <li style="--level:${heading.level}">
+        <button type="button" data-index-line="${heading.line}">
+          <span>${escapeHtml(heading.text)}</span>
+          <small>Ln ${heading.line}</small>
+        </button>
+      </li>`).join("")}</ol>`;
+  }
+
+  function openActivity(tool, pinned = false) {
+    if (tool === "settings") {
+      openSettingsOverlay();
+      return;
+    }
+    activityRailVisible = true;
+    activeActivity = tool;
+    activityOpen = true;
+    activityPinned = pinned || activityPinned;
+    activityPane.hidden = false;
+    renderActivityPane();
+    applySettingsToDom();
+    queueSaveSettings();
+    if (tool === "search") {
+      requestAnimationFrame(() => activityPaneContent.querySelector(".search-input")?.focus());
+    }
+  }
+
+  function closeActivityPane() {
+    activityOpen = false;
+    activityPinned = false;
+    activityPane.hidden = true;
+    applySettingsToDom();
+    document.querySelectorAll(".activity-button").forEach((button) => button.classList.remove("active"));
+  }
+
+  function toggleActivityRail() {
+    activityRailVisible = !activityRailVisible;
+    if (!activityRailVisible) {
+      activityPane.hidden = true;
+      activityPane.classList.remove("pinned");
+      document.body.classList.remove("activity-pinned");
+    } else if (activityOpen) {
+      renderActivityPane();
+    }
+    applySettingsToDom();
+    queueSaveSettings();
+  }
+
+  function openSettingsOverlay() {
+    settingsOverlay.hidden = false;
+    renderSettingsOverlay();
+  }
+
+  function closeSettingsOverlay() {
+    settingsOverlay.hidden = true;
+  }
+
+  function renderActivityPane() {
+    if (!activityOpen) {
+      activityPane.hidden = true;
+      activityPane.classList.remove("pinned");
+      document.body.classList.remove("activity-pinned");
+      return;
+    }
+    activityPane.hidden = false;
+    activityPane.classList.toggle("pinned", activityPinned);
+    activityPaneDockButton.classList.toggle("active", activityPinned);
+    activityPaneDockButton.title = activityPinned ? "Undock activity pane" : "Dock activity pane";
+    activityPaneDockButton.setAttribute("aria-label", activityPinned ? "Undock activity pane" : "Dock activity pane");
+    document.body.classList.toggle("activity-pinned", activityRailVisible && activityOpen && activityPinned);
+    document.querySelectorAll(".activity-button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.activity === activeActivity);
+    });
+    const titles = { outline: "Outline", search: "Search", recents: "Recents", settings: "Settings" };
+    activityPaneTitle.textContent = titles[activeActivity] || "Activity";
+    if (activeActivity === "outline") renderOutlineActivity();
+    if (activeActivity === "search") renderSearchActivity();
+    if (activeActivity === "recents") renderRecentsActivity();
+    if (activeActivity === "settings") renderSettingsActivity();
+  }
+
+  function renderOutlineActivity() {
+    const doc = getActiveDoc();
+    if (!doc) {
+      activityPaneContent.innerHTML = `<div class="activity-empty">No document open.</div>`;
+      return;
+    }
+    const headings = doc.text.split(/\r?\n/).map((line, index) => {
+      const match = line.match(/^(#{1,6})\s+(.+)$/);
+      if (!match) return null;
+      return { level: match[1].length, text: match[2].replace(/\s+#+\s*$/, ""), line: index + 1 };
+    }).filter(Boolean);
+    if (!headings.length) {
+      activityPaneContent.innerHTML = `<div class="activity-empty">No headings in this document.</div>`;
+      return;
+    }
+    activityPaneContent.innerHTML = `<ol class="activity-list">${headings.map((heading) => `
+      <li style="--level:${heading.level}">
+        <button type="button" data-activity-line="${heading.line}">
+          <span>${escapeHtml(heading.text)}</span>
+          <small>Ln ${heading.line}</small>
+        </button>
+      </li>`).join("")}</ol>`;
+  }
+
+  function renderSearchActivity() {
+    refreshSearchMatches();
+    activityPaneContent.innerHTML = `
+      <div class="search-panel">
+        <div class="search-row">
+          <input class="search-input" type="search" value="${escapeHtml(searchQuery)}" placeholder="Search" />
+          <button type="button" data-search-action="previous" title="Previous match">Prev</button>
+          <button type="button" data-search-action="next" title="Next match">Next</button>
+        </div>
+        <div class="replace-row">
+          <input class="replace-input" type="text" value="${escapeHtml(replaceQuery)}" placeholder="Replace" />
+          <button type="button" data-search-action="replace-current" title="Replace current">Replace</button>
+          <button type="button" data-search-action="replace-all" title="Replace all">All</button>
+        </div>
+        <div class="search-options">
+          <button type="button" class="${searchOptions.caseSensitive ? "active" : ""}" data-search-toggle="caseSensitive">Aa</button>
+          <button type="button" class="${searchOptions.wholeWord ? "active" : ""}" data-search-toggle="wholeWord">Word</button>
+          <button type="button" class="${searchOptions.regex ? "active" : ""}" data-search-toggle="regex">.*</button>
+        </div>
+        <div class="search-count">${searchQuery ? `${searchMatches.length} match${searchMatches.length === 1 ? "" : "es"}` : "Active document search"}</div>
+        <ol class="activity-list">${searchMatches.map((match, index) => `
+          <li>
+            <button type="button" class="${index === activeSearchIndex ? "active" : ""}" data-search-index="${index}">
+              <span>${escapeHtml(getLineSnippet(getActiveDoc()?.text || "", match.start))}</span>
+              <small>Ln ${getLineForPosition(getActiveDoc()?.text || "", match.start)}</small>
+            </button>
+          </li>`).join("")}</ol>
+      </div>`;
+    activityPaneContent.querySelector(".search-input")?.setSelectionRange(searchQuery.length, searchQuery.length);
+  }
+
+  function renderRecentsActivity() {
+    if (!recentFiles.length) {
+      activityPaneContent.innerHTML = `<div class="activity-empty">No recent files yet.</div>`;
+      return;
+    }
+    activityPaneContent.innerHTML = `<div class="activity-list">${recentFiles.map((filePath) => `
+      <button class="recent-file-button" type="button" data-recent-file="${escapeHtml(filePath)}">
+        <span>${escapeHtml(filePath.split(/[\\/]/).pop())}</span>
+        <small>${escapeHtml(filePath)}</small>
+      </button>`).join("")}</div>`;
+  }
+
+  function renderSettingsActivity() {
+    activityPaneContent.innerHTML = buildSettingsPanel();
+  }
+
+  function renderSettingsOverlay() {
+    settingsOverlayContent.innerHTML = buildSettingsPanel();
+  }
+
+  function buildSettingsPanel() {
+    return `
+      <div class="settings-panel">
+        <section class="settings-section">
+          <h3>Appearance</h3>
+          <label class="settings-row">Theme
+            <select class="settings-select" data-setting="theme">
+              <option value="dark" ${appSettings.theme === "dark" ? "selected" : ""}>Cappuccino Dark</option>
+              <option value="light" ${appSettings.theme === "light" ? "selected" : ""}>Cappuccino Light</option>
+              <option value="vscode-dark" ${appSettings.theme === "vscode-dark" ? "selected" : ""}>VS Code Dark+</option>
+              <option value="github-light" ${appSettings.theme === "github-light" ? "selected" : ""}>GitHub Light</option>
+              <option value="catppuccin-mocha" ${appSettings.theme === "catppuccin-mocha" ? "selected" : ""}>Catppuccin Mocha</option>
+              <option value="catppuccin-latte" ${appSettings.theme === "catppuccin-latte" ? "selected" : ""}>Catppuccin Latte</option>
+            </select>
+          </label>
+          <label class="settings-row">Accent
+            <input type="color" data-setting="accentColor" value="${escapeHtml(appSettings.accentColor || "#68d8c1")}" />
+          </label>
+        </section>
+        <section class="settings-section">
+          <h3>Editor</h3>
+          ${buildSettingsToggle("showFormattingToolbar", "Show formatting toolbar", appSettings.showFormattingToolbar)}
+          ${buildSettingsToggle("showLineNumbers", "Show line numbers", showLineNumbers)}
+          ${buildSettingsToggle("lineWrap", "Line wrap", lineWrap)}
+          ${buildSettingsToggle("scrollSyncAllowed", "Allow scroll sync", false, true)}
+        </section>
+      </div>`;
+  }
+
+  function buildSettingsToggle(setting, label, checked, disabled = false) {
+    return `<label class="settings-row"><span>${escapeHtml(label)}</span><input type="checkbox" data-setting="${setting}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} /></label>`;
+  }
+
+  function refreshSearchMatches() {
+    searchMatches = [];
+    const doc = getActiveDoc();
+    if (!doc || !searchQuery) {
+      activeSearchIndex = 0;
+      return;
+    }
+    try {
+      const flags = searchOptions.caseSensitive ? "g" : "gi";
+      const source = searchOptions.regex ? searchQuery : escapeRegExp(searchQuery);
+      const bounded = searchOptions.wholeWord ? `\\b${source}\\b` : source;
+      const regex = new RegExp(bounded, flags);
+      let match;
+      while ((match = regex.exec(doc.text)) !== null) {
+        searchMatches.push({ start: match.index, end: match.index + match[0].length });
+        if (match[0].length === 0) regex.lastIndex += 1;
+      }
+    } catch (_error) {
+      searchMatches = [];
+    }
+    activeSearchIndex = clamp(activeSearchIndex, 0, Math.max(0, searchMatches.length - 1));
+  }
+
+  function jumpToSearchMatch(index) {
+    if (!searchMatches.length) return;
+    activeSearchIndex = (index + searchMatches.length) % searchMatches.length;
+    const match = searchMatches[activeSearchIndex];
+    jumpActivePaneToLine(getLineForPosition(getActiveDoc().text, match.start));
+    const editor = getActiveTextarea();
+    if (editor) {
+      editor.selectionStart = match.start;
+      editor.selectionEnd = match.end;
+      editor.focus();
+      handlePaneCursor(getActiveDoc().activePane, editor);
+    }
+    renderSearchActivity();
+  }
+
+  function replaceCurrentMatch() {
+    refreshSearchMatches();
+    if (!searchMatches.length) return;
+    const match = searchMatches[activeSearchIndex];
+    replaceTextRange(match.start, match.end, replaceQuery);
+    refreshSearchMatches();
+    renderSearchActivity();
+  }
+
+  function replaceAllMatches() {
+    refreshSearchMatches();
+    if (!searchMatches.length) return;
+    const doc = getActiveDoc();
+    let nextText = doc.text;
+    [...searchMatches].reverse().forEach((match) => {
+      nextText = `${nextText.slice(0, match.start)}${replaceQuery}${nextText.slice(match.end)}`;
+    });
+    setText(nextText, true, doc.activePane);
+    refreshSearchMatches();
+    renderSearchActivity();
+    setStatus("Replaced matches");
+  }
+
+  function replaceTextRange(start, end, text) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    const nextText = `${doc.text.slice(0, start)}${text}${doc.text.slice(end)}`;
+    setText(nextText, true, doc.activePane);
+    const editor = getActiveTextarea();
+    if (editor) {
+      editor.value = nextText;
+      editor.selectionStart = start;
+      editor.selectionEnd = start + text.length;
+      editor.focus();
+    }
+  }
+
+  function getLineSnippet(text, position) {
+    const start = text.lastIndexOf("\n", position - 1) + 1;
+    const endIndex = text.indexOf("\n", position);
+    const end = endIndex === -1 ? text.length : endIndex;
+    return text.slice(start, end).trim() || "(blank line)";
+  }
+
+  function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   function updateToolbar() {
     const doc = getActiveDoc();
     const disabled = !doc;
-    [singleLayoutButton, splitLayoutButton, primaryPaneButton, secondaryPaneButton, paneCodeButton,
-      panePreviewButton, paneSyncButton, diffInspectorButton, diffFollowButton].forEach((button) => {
+    [singleLayoutButton, splitLayoutButton, shareButton, topbarInspectorButton].forEach((button) => {
       button.disabled = disabled;
     });
+    paneSyncButton.disabled = true;
     if (!doc) return;
     singleLayoutButton.classList.toggle("active", doc.layoutMode === "single");
     splitLayoutButton.classList.toggle("active", doc.layoutMode === "split");
-    paneSelector.hidden = doc.layoutMode !== "split";
-    primaryPaneButton.classList.toggle("active", doc.activePane === PANE_PRIMARY);
-    secondaryPaneButton.classList.toggle("active", doc.activePane === PANE_SECONDARY);
-    paneCodeButton.classList.toggle("active", getActivePaneState()?.view === VIEW_CODE);
-    panePreviewButton.classList.toggle("active", getActivePaneState()?.view === VIEW_PREVIEW);
-    paneSyncButton.classList.toggle("active", doc.paneSyncLocked);
-    diffInspectorButton.classList.toggle("active", inspectorOpen);
-    diffFollowButton.classList.toggle("active", diffFollowLocked);
+    paneSyncButton.classList.remove("active");
+    topbarInspectorButton.classList.toggle("active", inspectorOpen);
+    updateInspectorButtons();
   }
 
   function updateStatus() {
     const doc = getActiveDoc();
-    charCountEl.textContent = `${doc?.text.length || 0} chars`;
-    zoomLevelEl.textContent = `${editorZoom}%`;
     if (!doc) {
-      cursorPositionEl.textContent = "Ln 1, Col 1";
+      cursorPositionEl.textContent = "";
+      charCountEl.textContent = "";
+      zoomLevelEl.textContent = "";
+      filePathEl.textContent = "";
+      statusMessage.textContent = "";
       return;
     }
+    zoomLevelEl.textContent = `${getDocZoom(doc)}%`;
     const pane = getActivePaneState();
     const cursor = Math.min(pane?.cursor || 0, doc.text.length);
+    const selectionEnd = Math.min(pane?.selectionEnd ?? cursor, doc.text.length);
     const before = doc.text.slice(0, cursor);
     const line = before.split(/\r?\n/).length;
     const lastBreak = Math.max(before.lastIndexOf("\n"), before.lastIndexOf("\r"));
     const col = cursor - lastBreak;
     cursorPositionEl.textContent = `Ln ${line}, Col ${col}`;
+    const selectedChars = Math.abs(selectionEnd - cursor);
+    charCountEl.textContent = selectedChars > 0
+      ? `${selectedChars} of ${doc.text.length} chars`
+      : `${doc.text.length} chars`;
   }
 
   function handlePaneInput(paneId, textarea) {
@@ -424,10 +1053,9 @@ Code block
     pane.cursor = textarea.selectionStart;
     pane.selectionEnd = textarea.selectionEnd;
     pane.scrollTop = textarea.scrollTop;
-    pane.sourceLine = getLineForPosition(textarea.value, textarea.selectionStart);
+    pane.sourceLine = getTopVisibleBlockLine(doc.text, getTopVisibleCodeLine(textarea));
     setText(textarea.value, true, paneId);
-    syncOtherPanesFrom(paneId);
-    syncInspectorFromPane(paneId);
+    renderActivityPane();
   }
 
   function handlePaneCursor(paneId, textarea) {
@@ -439,28 +1067,30 @@ Code block
     pane.selectionEnd = textarea.selectionEnd;
     pane.sourceLine = getLineForPosition(textarea.value, textarea.selectionStart);
     updateStatus();
-    syncOtherPanesFrom(paneId);
-    syncInspectorFromPane(paneId);
   }
 
   function handlePaneScroll(paneId, textarea) {
     const doc = getActiveDoc();
-    if (!doc || paneSyncing) return;
+    if (!doc) return;
+    if (paneSyncing || paneRefreshing) {
+      const node = paneNodes.get(paneId);
+      if (node?.lineNumbers) node.lineNumbers.scrollTop = textarea.scrollTop;
+      return;
+    }
     const pane = doc.panes[paneId];
+    doc.syncSourcePane = paneId;
     pane.scrollTop = textarea.scrollTop;
-    pane.sourceLine = estimateLineFromScroll(textarea);
-    paneNodes.get(paneId).lineNumbers.scrollTop = textarea.scrollTop;
-    syncOtherPanesFrom(paneId);
-    syncInspectorFromPane(paneId);
+    pane.sourceLine = getTopVisibleBlockLine(doc.text, getTopVisibleCodeLine(textarea));
+    const node = paneNodes.get(paneId);
+    if (node?.lineNumbers) node.lineNumbers.scrollTop = textarea.scrollTop;
   }
 
   function handlePreviewScroll(paneId, preview) {
     const doc = getActiveDoc();
-    if (!doc || paneSyncing) return;
+    if (!doc || paneSyncing || paneRefreshing) return;
     const pane = doc.panes[paneId];
+    doc.syncSourcePane = paneId;
     pane.sourceLine = getFirstVisibleSourceLine(preview);
-    syncOtherPanesFrom(paneId);
-    syncInspectorFromPane(paneId);
   }
 
   function setText(text, trackHistory = true, sourcePaneId = null) {
@@ -480,30 +1110,54 @@ Code block
     const doc = getActiveDoc();
     if (!doc) return;
     renderTabs();
-    paneNodes.forEach((node, paneId) => {
-      if (paneId === sourcePaneId && node.textarea) {
-        updateCodePaneChrome(node, doc);
-        return;
-      }
-      const state = doc.panes[paneId];
-      if (state.view === VIEW_CODE) updateCodePane(node, state, doc);
-      if (state.view === VIEW_PREVIEW) updatePreviewPane(node, state, doc);
-    });
+    paneRefreshing = true;
+    try {
+      paneNodes.forEach((node, paneId) => {
+        if (paneId === sourcePaneId && node.textarea) {
+          updateCodePaneChrome(node, doc);
+          return;
+        }
+        const state = doc.panes[paneId];
+        if (state.view === VIEW_CODE) updateCodePane(node, state, doc);
+        if (state.view === VIEW_PREVIEW) updatePreviewPane(node, state, doc);
+      });
+    } finally {
+      paneRefreshing = false;
+    }
     renderInspector();
+    renderActivityPane();
     updateStatus();
   }
 
   function updateCodePaneChrome(node, doc) {
-    if (node.lineNumbers) {
-      node.lineNumbers.textContent = showLineNumbers
-        ? Array.from({ length: Math.max(1, doc.text.split(/\r?\n/).length) }, (_item, index) => String(index + 1)).join("\n")
-        : "";
-      node.lineNumbers.scrollTop = node.textarea.scrollTop;
-    }
+    node.wrap?.classList.toggle("show-lines", showLineNumbers);
+    node.wrap?.classList.toggle("no-wrap", !lineWrap);
+    node.wrap?.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
+    updateLineNumbers(node, doc);
     if (node.ghostText) {
       node.ghostText.textContent = doc.text.length === 0 ? defaultGhostText : "";
       node.ghostText.hidden = doc.text.length !== 0;
     }
+  }
+
+  function updateLineNumbers(node, doc) {
+    if (!node?.lineNumbers || !node.textarea) return;
+    if (!showLineNumbers) {
+      node.lineNumbers.textContent = "";
+      return;
+    }
+    const lineCount = Math.max(1, doc.text.split(/\r?\n/).length);
+    node.lineNumbers.textContent = Array.from({ length: lineCount }, (_item, index) => String(index + 1)).join("\n");
+    node.lineNumbers.scrollTop = node.textarea.scrollTop;
+    requestAnimationFrame(() => {
+      node.lineNumbers.scrollTop = node.textarea.scrollTop;
+    });
+  }
+
+  function refreshVisibleLineNumbers() {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    paneNodes.forEach((node) => updateLineNumbers(node, doc));
   }
 
   function undo() {
@@ -562,14 +1216,14 @@ Code block
       filePath: file.filePath,
       text: file.text
     });
+    addRecentFile(file.filePath);
     const doc = getActiveDoc();
     doc.savedText = file.text;
     doc.dirty = false;
     renderApp();
   }
 
-  async function saveActive(saveAs = false) {
-    const doc = getActiveDoc();
+  async function saveDocument(doc, saveAs = false) {
     if (!doc) return;
     closeMenuPanel();
     try {
@@ -580,22 +1234,48 @@ Code block
       });
       if (!saved) {
         setStatus("Save cancelled");
-        return;
+        return false;
       }
       doc.filePath = saved.filePath;
       doc.title = saved.filePath.split(/[\\/]/).pop();
       doc.savedText = doc.text;
       doc.dirty = false;
+      addRecentFile(saved.filePath);
+      persistFileState(doc);
       renderApp();
       setStatus("Saved");
+      return true;
     } catch (error) {
       console.error(error);
       setStatus(`Save failed: ${error.message || "Unknown error"}`);
     }
+    return false;
   }
 
-  function closeDocument(id) {
+  async function saveActive(saveAs = false) {
+    await saveDocument(getActiveDoc(), saveAs);
+  }
+
+  function addRecentFile(filePath) {
+    if (!filePath) return;
+    recentFiles = [filePath, ...recentFiles.filter((item) => item !== filePath)].slice(0, 20);
+    appSettings.recentFiles = recentFiles;
+    window.mdb.addRecentFile(filePath).catch((error) => console.error(error));
+    renderActivityPane();
+  }
+
+  async function closeDocument(id) {
     if (!id || documents.length === 0) return;
+    const closingDoc = documents.find((doc) => doc.id === id);
+    if (!closingDoc) return;
+    if (closingDoc.dirty) {
+      const choice = await window.mdb.confirmCloseUnsaved({ title: closingDoc.title });
+      if (choice === "cancel") return;
+      if (choice === "save") {
+        const saved = await saveDocument(closingDoc, false);
+        if (!saved) return;
+      }
+    }
     if (documents.length === 1) {
       documents = [];
       activeId = null;
@@ -686,52 +1366,31 @@ Code block
   }
 
   function openMenuPanel(menuName, anchor) {
-    const menus = {
-      file: [
-        ["New Tab", () => createDocument()],
-        ["Close Tab", () => closeDocument(activeId)],
-        ["Open...", openFiles],
-        ["Save", () => saveActive(false)],
-        ["Save As...", () => saveActive(true)],
-        ["Print...", printDocument],
-        ["Export HTML", exportHtml],
-        ["Export PDF", exportPdf],
-        ["Export Word", exportWord]
-      ],
-      edit: [
-        ["Undo", undo],
-        ["Redo", redo],
-        ["Bold", () => wrapCodeSelection("**", "**")],
-        ["Italic", () => wrapCodeSelection("_", "_")],
-        ["Underline", () => wrapCodeSelection("<u>", "</u>")]
-      ],
-      view: [
-        ["Single Pane", () => setLayoutMode("single")],
-        ["Split Panes", () => setLayoutMode("split")],
-        ["Pane Code", () => setActivePaneView(VIEW_CODE)],
-        ["Pane Preview", () => setActivePaneView(VIEW_PREVIEW)],
-        ["Toggle Diff Inspector", toggleInspector]
-      ],
-      settings: [
-        [document.body.classList.contains("light") ? "Dark Mode" : "Light Mode", toggleTheme],
-        [document.body.classList.contains("glass") ? "Disable Glass" : "Enable Glass", toggleGlass],
-        [lineWrap ? "Disable Line Wrap" : "Enable Line Wrap", toggleLineWrap],
-        [showLineNumbers ? "Hide Line Numbers" : "Show Line Numbers", toggleLineNumbers]
-      ]
-    };
-
+    const menus = getMenus();
     menuPanel.innerHTML = "";
-    menus[menuName].forEach(([label, action]) => {
+    menus[menuName].forEach((entry) => {
+      if (entry.separator) {
+        const separator = document.createElement("div");
+        separator.className = "menu-separator";
+        menuPanel.appendChild(separator);
+        return;
+      }
       const item = document.createElement("button");
       item.type = "button";
-      item.textContent = label;
-      item.dataset.menuLabel = label.toLowerCase();
+      item.innerHTML = `<span>${escapeHtml(entry.label)}</span>${entry.items ? `<span class="menu-shortcut">›</span>` : entry.shortcut ? `<span class="menu-shortcut">${escapeHtml(entry.shortcut)}</span>` : ""}`;
+      item.dataset.menuLabel = entry.label.toLowerCase();
+      item.disabled = Boolean(entry.disabled);
       item.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        action();
+        if (entry.items) return;
+        if (entry.disabled) return;
+        entry.action();
         closeMenuPanel();
       });
+      if (entry.items) {
+        item.addEventListener("pointerenter", () => openMenuSubmenu(item, entry.items));
+      }
       menuPanel.appendChild(item);
     });
 
@@ -741,6 +1400,80 @@ Code block
     menuPanel.hidden = false;
     activeMenuName = menuName;
     menuSearch = "";
+  }
+
+  function openMenuSubmenu(trigger, entries) {
+    closeFloatingSubmenus();
+    const submenu = document.createElement("div");
+    submenu.className = "menu-panel submenu-panel submenu-open";
+    entries.forEach((entry) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.innerHTML = `<span>${escapeHtml(entry.label)}</span>${entry.shortcut ? `<span class="menu-shortcut">${escapeHtml(entry.shortcut)}</span>` : ""}`;
+      item.disabled = Boolean(entry.disabled);
+      item.dataset.menuLabel = entry.label.toLowerCase();
+      item.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (entry.disabled) return;
+        entry.action();
+        closeFloatingSubmenus();
+        closeMenuPanel();
+      });
+      submenu.appendChild(item);
+    });
+    document.body.appendChild(submenu);
+    contextFloatingMenus.push(submenu);
+    const rect = trigger.getBoundingClientRect();
+    submenu.style.display = "grid";
+    submenu.style.left = `${rect.right + 4}px`;
+    submenu.style.top = `${rect.top}px`;
+  }
+
+  function getMenus() {
+    const doc = getActiveDoc();
+    const hasDoc = Boolean(doc);
+    return {
+      app: [
+        { label: "File", items: [
+          { label: "New", shortcut: "Ctrl+N", action: () => createDocument() },
+          { label: "Open", shortcut: "Ctrl+O", action: openFiles },
+          { label: "Save", shortcut: "Ctrl+S", action: () => saveActive(false), disabled: !hasDoc },
+          { label: "Save As", shortcut: "Ctrl+Shift+S", action: () => saveActive(true), disabled: !hasDoc },
+          { label: "Close Tab", shortcut: "Ctrl+W", action: () => closeDocument(activeId), disabled: !hasDoc }
+        ] },
+        { label: "Export", items: [
+          { label: "PDF", action: exportPdf, disabled: !hasDoc },
+          { label: "DOCX", action: exportWord, disabled: !hasDoc },
+          { label: "HTML", action: exportHtml, disabled: !hasDoc },
+          { label: "Print", shortcut: "Ctrl+P", action: printDocument, disabled: !hasDoc }
+        ] },
+        { label: "Edit", items: [
+          { label: "Undo", shortcut: "Ctrl+Z", action: undo, disabled: !hasDoc },
+          { label: "Redo", shortcut: "Ctrl+Y", action: redo, disabled: !hasDoc },
+          { label: "Cut", shortcut: "Ctrl+X", action: () => document.execCommand("cut"), disabled: !hasDoc },
+          { label: "Copy", shortcut: "Ctrl+C", action: () => document.execCommand("copy"), disabled: !hasDoc },
+          { label: "Paste", shortcut: "Ctrl+V", action: () => document.execCommand("paste"), disabled: !hasDoc },
+          { label: "Select All", shortcut: "Ctrl+A", action: () => getActiveTextarea()?.select(), disabled: !hasDoc }
+        ] },
+        { label: "View", items: [
+          { label: "Single Pane", action: () => setLayoutMode("single"), disabled: !hasDoc },
+          { label: "Split Pane", action: () => setLayoutMode("split"), disabled: !hasDoc },
+          { label: "Code View", action: () => setActivePaneView(VIEW_CODE), disabled: !hasDoc },
+          { label: "Preview View", action: () => setActivePaneView(VIEW_PREVIEW), disabled: !hasDoc },
+          { label: "Inspector", action: toggleInspector, disabled: !hasDoc },
+          { label: "Activity Bar", action: toggleActivityRail }
+        ] },
+        { separator: true },
+        { label: "Settings", action: () => openActivity("settings", true) }
+      ],
+      share: [
+        { label: "Export PDF", action: exportPdf, disabled: !hasDoc },
+        { label: "Export DOCX", action: exportWord, disabled: !hasDoc },
+        { label: "Export HTML", action: exportHtml, disabled: !hasDoc },
+        { label: "Print", shortcut: "Ctrl+P", action: printDocument, disabled: !hasDoc }
+      ]
+    };
   }
 
   function closeMenuPanel() {
@@ -773,8 +1506,14 @@ Code block
   }
 
   function setEditorZoom(nextZoom) {
-    editorZoom = Math.min(180, Math.max(70, nextZoom));
+    const doc = getActiveDoc();
+    if (!doc) return;
+    doc.zoom = Math.min(180, Math.max(70, nextZoom));
     updateAllPanes();
+  }
+
+  function getDocZoom(doc = getActiveDoc()) {
+    return doc?.zoom || 100;
   }
 
   function handleCodeKeydown(event) {
@@ -982,15 +1721,25 @@ Code block
     closeMenuPanel();
     closeContextMenu();
     contextMenu.innerHTML = "";
-    addContextButton("Copy", () => document.execCommand("copy"));
-    addContextButton("Paste", () => document.execCommand("paste"));
-    addContextSeparator();
-    addContextButton("Bold", () => wrapCodeSelection("**", "**"));
-    addContextButton("Italic", () => wrapCodeSelection("_", "_"));
-    addContextButton("Underline", () => wrapCodeSelection("<u>", "</u>"));
-    addContextButton("Code", () => wrapCodeSelection("`", "`"));
-    addContextButton("Quote Line", () => prefixCurrentLine("> "));
-    addContextButton("Bullet Line", () => prefixCurrentLine("- "));
+    const hasSelection = editor.selectionStart !== editor.selectionEnd;
+    if (hasSelection) {
+      addContextButton("Cut", () => document.execCommand("cut"));
+      addContextButton("Copy", () => document.execCommand("copy"));
+      addContextButton("Paste", () => document.execCommand("paste"));
+      addContextButton("Select All", () => editor.select());
+      addContextSeparator();
+      addContextSubmenu("Formatting", [
+        ["Bold", () => wrapCodeSelection("**", "**")],
+        ["Italic", () => wrapCodeSelection("_", "_")],
+        ["Underline", () => wrapCodeSelection("<u>", "</u>")],
+        ["Code", () => wrapCodeSelection("`", "`")]
+      ]);
+    } else {
+      addContextButton("Paste", () => document.execCommand("paste"));
+      addContextButton("Select All", () => editor.select());
+      addContextSeparator();
+      addContextSubmenu("Insert", slashCommands.map((command) => [command.label, () => applyLineCommand(command, false)]));
+    }
 
     const tableItems = getTableContextItems();
     if (tableItems.length) {
@@ -1376,38 +2125,16 @@ Code block
   }
 
   function syncOtherPanesFrom(sourcePaneId) {
-    const doc = getActiveDoc();
-    if (!doc || !doc.paneSyncLocked || doc.layoutMode !== "split" || paneSyncing) return;
-    const sourceLine = doc.panes[sourcePaneId].sourceLine || 1;
-    paneSyncing = true;
-    getVisiblePaneIds(doc).forEach((paneId) => {
-      if (paneId === sourcePaneId) return;
-      doc.panes[paneId].sourceLine = sourceLine;
-      const node = paneNodes.get(paneId);
-      if (!node) return;
-      if (doc.panes[paneId].view === VIEW_CODE && node.textarea) {
-        node.textarea.scrollTop = estimateScrollTopForLine(node.textarea, sourceLine);
-        doc.panes[paneId].scrollTop = node.textarea.scrollTop;
-      }
-      if (doc.panes[paneId].view === VIEW_PREVIEW && node.preview) {
-        scrollPreviewToLine(node.preview, sourceLine);
-      }
-    });
-    paneSyncing = false;
+    void sourcePaneId;
   }
 
   function syncInspectorFromPane(paneId) {
-    const doc = getActiveDoc();
-    if (!doc || !inspectorOpen || !diffFollowLocked) return;
-    const sourceLine = doc.panes[paneId]?.sourceLine || 1;
-    const target = diffInspectorContent.querySelector(`[data-source-line="${sourceLine}"]`)
-      || findNearestSourceElement(diffInspectorContent, sourceLine);
-    if (target) diffInspectorContent.scrollTop = target.offsetTop - diffInspectorContent.clientHeight * 0.2;
+    void paneId;
   }
 
   function scrollPreviewToLine(preview, line) {
     const target = preview.querySelector(`[data-source-line="${line}"]`) || findNearestSourceElement(preview, line);
-    if (target) preview.scrollTop = target.offsetTop - preview.clientHeight * 0.2;
+    if (target) preview.scrollTop = target.offsetTop;
   }
 
   function findNearestSourceElement(container, line) {
@@ -1426,18 +2153,77 @@ Code block
     return Number((current || elements[0])?.dataset.sourceLine || 1);
   }
 
+  function getTopVisibleCodeLine(textarea) {
+    const lineHeight = getTextareaLineHeight(textarea);
+    return Math.max(1, Math.floor(textarea.scrollTop / lineHeight) + 1);
+  }
+
+  function getTopVisibleBlockLine(markdown, line) {
+    return getBlockForLine(markdown, line).sourceLine;
+  }
+
+  function getBlockForLine(markdown, line) {
+    const blocks = window.MDBasicsDisplay.getMarkdownBlocks(markdown);
+    if (!blocks.length) return { sourceLine: 1, text: "" };
+    let previousBlock = blocks[0];
+    blocks.forEach((block) => {
+      if (block.sourceLine <= line) previousBlock = block;
+    });
+    return previousBlock || blocks[0] || { sourceLine: 1, text: "" };
+  }
+
   function getLineForPosition(value, position) {
     return value.slice(0, position).split(/\r?\n/).length;
   }
 
-  function estimateLineFromScroll(textarea) {
-    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight || "24");
-    return Math.max(1, Math.floor(textarea.scrollTop / lineHeight) + 1);
+  function estimateScrollTopForLine(textarea, line) {
+    return (Math.max(1, line) - 1) * getTextareaLineHeight(textarea);
   }
 
-  function estimateScrollTopForLine(textarea, line) {
-    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight || "24");
-    return Math.max(0, (line - 1) * lineHeight);
+  function estimateScrollTopForAnchor(doc, textarea, anchor) {
+    const block = getBlockForLine(doc.text, anchor.sourceLine);
+    const blockLineCount = Math.max(1, block.text.split(/\r?\n/).length);
+    const targetLine = block.sourceLine + Math.round(blockLineCount * anchor.ratio);
+    return estimateScrollTopForLine(textarea, targetLine);
+  }
+
+  function jumpActivePaneToLine(line) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    const node = getActivePaneNode();
+    const targetLine = Math.max(1, line);
+    if (node?.textarea) {
+      node.textarea.scrollTop = estimateScrollTopForLine(node.textarea, targetLine);
+      const offset = getOffsetForLine(doc.text, targetLine);
+      node.textarea.selectionStart = offset;
+      node.textarea.selectionEnd = offset;
+      node.textarea.focus();
+      handlePaneCursor(doc.activePane, node.textarea);
+      handlePaneScroll(doc.activePane, node.textarea);
+      return;
+    }
+    if (node?.preview) {
+      scrollPreviewToLine(node.preview, targetLine);
+      handlePreviewScroll(doc.activePane, node.preview);
+    }
+  }
+
+  function getOffsetForLine(text, line) {
+    if (line <= 1) return 0;
+    let offset = 0;
+    let currentLine = 1;
+    while (currentLine < line && offset < text.length) {
+      const nextBreak = text.indexOf("\n", offset);
+      if (nextBreak === -1) return text.length;
+      offset = nextBreak + 1;
+      currentLine += 1;
+    }
+    return offset;
+  }
+
+  function getTextareaLineHeight(textarea) {
+    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight);
+    return Number.isFinite(lineHeight) ? lineHeight : 24;
   }
 
   function clamp(value, min, max) {
@@ -1482,7 +2268,8 @@ Code block
     if (menuPanel.hidden) return false;
     if (event.key === "Escape") {
       event.preventDefault();
-      closeMenuPanel();
+      menuSearch = "";
+      Array.from(menuPanel.querySelectorAll("button")).forEach((item) => item.classList.remove("active"));
       return true;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -1502,7 +2289,7 @@ Code block
       event.preventDefault();
       menuSearch += event.key.toLowerCase();
       clearTimeout(menuSearchTimer);
-      menuSearchTimer = setTimeout(() => { menuSearch = ""; }, 800);
+      menuSearchTimer = setTimeout(() => { menuSearch = ""; }, 2000);
       jumpTopMenu(menuSearch);
       return true;
     }
@@ -1540,41 +2327,222 @@ Code block
     statusMessage.textContent = message;
   }
 
+  function handleActivityClick(event) {
+    const lineButton = event.target.closest("[data-activity-line]");
+    if (lineButton) {
+      jumpActivePaneToLine(Number(lineButton.dataset.activityLine || 1));
+      return;
+    }
+    const searchButton = event.target.closest("[data-search-index]");
+    if (searchButton) {
+      jumpToSearchMatch(Number(searchButton.dataset.searchIndex || 0));
+      return;
+    }
+    const actionButton = event.target.closest("[data-search-action]");
+    if (actionButton) {
+      const action = actionButton.dataset.searchAction;
+      if (action === "previous") jumpToSearchMatch(activeSearchIndex - 1);
+      if (action === "next") jumpToSearchMatch(activeSearchIndex + 1);
+      if (action === "replace-current") replaceCurrentMatch();
+      if (action === "replace-all") replaceAllMatches();
+      return;
+    }
+    const toggleButton = event.target.closest("[data-search-toggle]");
+    if (toggleButton) {
+      const key = toggleButton.dataset.searchToggle;
+      searchOptions[key] = !searchOptions[key];
+      activeSearchIndex = 0;
+      renderSearchActivity();
+      return;
+    }
+    const recentButton = event.target.closest("[data-recent-file]");
+    if (recentButton) {
+      openPath(recentButton.dataset.recentFile);
+    }
+  }
+
+  function handleSettingsOverlayInput(event) {
+    handleActivityInput(event);
+  }
+
+  function handleSettingsOverlayChange(event) {
+    handleActivityChange(event);
+    renderSettingsOverlay();
+  }
+
+  function handleActivityInput(event) {
+    if (event.target.classList.contains("search-input")) {
+      searchQuery = event.target.value;
+      activeSearchIndex = 0;
+      renderSearchActivity();
+      activityPaneContent.querySelector(".search-input")?.focus();
+      return;
+    }
+    if (event.target.classList.contains("replace-input")) {
+      replaceQuery = event.target.value;
+    }
+  }
+
+  function handleActivityChange(event) {
+    const setting = event.target.dataset.setting;
+    if (!setting || event.target.disabled) return;
+    if (event.target.type === "checkbox") {
+      appSettings[setting] = event.target.checked;
+    } else {
+      appSettings[setting] = event.target.value;
+    }
+    if (setting === "theme") appSettings.theme = event.target.value;
+    if (setting === "showLineNumbers") showLineNumbers = event.target.checked;
+    if (setting === "lineWrap") lineWrap = event.target.checked;
+    applySettingsToDom();
+    updateAllPanes();
+    queueSaveSettings();
+    if (!activityPane.hidden && activeActivity === "settings") renderSettingsActivity();
+  }
+
+  function startActivityResize(event) {
+    event.preventDefault();
+    activityResize = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: Number(appSettings.activityPaneWidth) || 280
+    };
+    activityResizeHandle.setPointerCapture(event.pointerId);
+  }
+
+  function handleActivityResize(event) {
+    if (!activityResize) return;
+    const width = clamp(activityResize.startWidth + event.clientX - activityResize.startX, 220, 520);
+    appSettings.activityPaneWidth = width;
+    document.documentElement.style.setProperty("--activity-pane-width", `${width}px`);
+    requestAnimationFrame(refreshVisibleLineNumbers);
+  }
+
+  function stopActivityResize(event) {
+    if (!activityResize || event.pointerId !== activityResize.pointerId) return;
+    activityResize = null;
+    queueSaveSettings();
+  }
+
+  function startInspectorResize(event) {
+    event.preventDefault();
+    inspectorResize = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: Number(appSettings.inspectorWidth) || rightInspector.getBoundingClientRect().width || 360
+    };
+    inspectorResizeHandle.setPointerCapture(event.pointerId);
+  }
+
+  function handleInspectorResize(event) {
+    if (!inspectorResize) return;
+    const width = clamp(inspectorResize.startWidth + inspectorResize.startX - event.clientX, 280, 620);
+    appSettings.inspectorWidth = width;
+    document.documentElement.style.setProperty("--inspector-width", `${width}px`);
+    requestAnimationFrame(refreshVisibleLineNumbers);
+  }
+
+  function stopInspectorResize(event) {
+    if (!inspectorResize || event.pointerId !== inspectorResize.pointerId) return;
+    inspectorResize = null;
+    queueSaveSettings();
+  }
+
+  function startPaneResize(event) {
+    const doc = getActiveDoc();
+    if (!doc || doc.layoutMode !== "split") return;
+    event.preventDefault();
+    const rect = paneArea.getBoundingClientRect();
+    paneResize = {
+      pointerId: event.pointerId,
+      left: rect.left,
+      width: rect.width
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePaneResize(event) {
+    const doc = getActiveDoc();
+    if (!doc || !paneResize) return;
+    doc.splitRatio = clamp((event.clientX - paneResize.left) / Math.max(1, paneResize.width), 0.25, 0.75);
+    updatePaneAreaMode(doc);
+    requestAnimationFrame(refreshVisibleLineNumbers);
+  }
+
+  function stopPaneResize(event) {
+    if (!paneResize || event.pointerId !== paneResize.pointerId) return;
+    paneResize = null;
+    persistFileState();
+  }
+
+  function toggleActivityDock() {
+    const nextPinned = !activityPinned;
+    if (!activityOpen) {
+      activityOpen = true;
+      activityPane.hidden = false;
+    }
+    activityPinned = nextPinned;
+    if (activityPinned) activityRailVisible = true;
+    renderActivityPane();
+    applySettingsToDom();
+    queueSaveSettings();
+  }
+
   function bindEvents() {
     document.getElementById("newTabButton").addEventListener("click", () => createDocument());
     emptyOpenButton.addEventListener("click", openFiles);
+    emptyNewButton.addEventListener("click", () => createDocument());
     singleLayoutButton.addEventListener("click", () => setLayoutMode("single"));
-    splitLayoutButton.addEventListener("click", () => setLayoutMode("split"));
-    primaryPaneButton.addEventListener("click", () => setActivePane(PANE_PRIMARY));
-    secondaryPaneButton.addEventListener("click", () => setActivePane(PANE_SECONDARY));
-    paneCodeButton.addEventListener("click", () => setActivePaneView(VIEW_CODE));
-    panePreviewButton.addEventListener("click", () => setActivePaneView(VIEW_PREVIEW));
+    splitLayoutButton.addEventListener("click", toggleSplitLayout);
     paneSyncButton.addEventListener("click", () => {
-      const doc = getActiveDoc();
-      if (!doc) return;
-      doc.paneSyncLocked = !doc.paneSyncLocked;
-      updateToolbar();
+      setStatus("Scroll sync is parked for the foundation redesign");
     });
-    diffInspectorButton.addEventListener("click", toggleInspector);
-    diffFollowButton.addEventListener("click", () => {
-      diffFollowLocked = !diffFollowLocked;
-      updateToolbar();
+    activityToggleButton.addEventListener("click", toggleActivityRail);
+    topbarInspectorButton.addEventListener("click", toggleInspector);
+    inspectorInfoButton.addEventListener("click", () => setInspectorMode("info"));
+    inspectorDiffButton.addEventListener("click", () => setInspectorMode("diff"));
+    diffChangedOnlyButton.addEventListener("click", () => {
+      diffChangedOnly = !diffChangedOnly;
       renderInspector();
+    });
+    diffInspectorContent.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-index-line]");
+      if (!button) return;
+      jumpActivePaneToLine(Number(button.dataset.indexLine || 1));
     });
     closeInspectorButton.addEventListener("click", () => {
       inspectorOpen = false;
       renderInspector();
       updateToolbar();
+      persistFileState();
     });
 
-    document.querySelectorAll("[data-menu]").forEach((button) => {
+    document.querySelectorAll(".activity-button").forEach((button) => {
+      button.addEventListener("mouseenter", () => {
+        if (button.dataset.activity === "settings") return;
+        if (!activityPinned) openActivity(button.dataset.activity, false);
+      });
+      button.addEventListener("click", () => openActivity(button.dataset.activity, activityPinned));
+    });
+    activityPane.addEventListener("mouseleave", () => {
+      if (!activityPinned) closeActivityPane();
+    });
+    activityPaneCloseButton.addEventListener("click", closeActivityPane);
+    activityPaneDockButton.addEventListener("click", toggleActivityDock);
+    activityPaneContent.addEventListener("click", handleActivityClick);
+    activityPaneContent.addEventListener("input", handleActivityInput);
+    activityPaneContent.addEventListener("change", handleActivityChange);
+    activityResizeHandle.addEventListener("pointerdown", startActivityResize);
+    inspectorResizeHandle.addEventListener("pointerdown", startInspectorResize);
+    settingsOverlayCloseButton.addEventListener("click", closeSettingsOverlay);
+    settingsOverlay.addEventListener("input", handleSettingsOverlayInput);
+    settingsOverlay.addEventListener("change", handleSettingsOverlayChange);
+
+    [appMenuButton, shareButton].forEach((button) => {
       button.addEventListener("pointerdown", (event) => {
         event.stopPropagation();
         event.preventDefault();
         openMenuPanel(button.dataset.menu, button);
-      });
-      button.addEventListener("mouseenter", () => {
-        if (activeMenuName) openMenuPanel(button.dataset.menu, button);
       });
     });
 
@@ -1584,6 +2552,13 @@ Code block
       if (!slashMenu.contains(event.target) && event.target !== getActiveTextarea()) hideSlashMenu();
     });
     window.addEventListener("keydown", handleGlobalKeydown);
+    window.addEventListener("pointermove", handleActivityResize);
+    window.addEventListener("pointermove", handleInspectorResize);
+    window.addEventListener("pointermove", handlePaneResize);
+    window.addEventListener("pointerup", stopActivityResize);
+    window.addEventListener("pointerup", stopInspectorResize);
+    window.addEventListener("pointerup", stopPaneResize);
+    window.addEventListener("resize", () => requestAnimationFrame(refreshVisibleLineNumbers));
     window.mdb.onOpenPath(openPath);
   }
 

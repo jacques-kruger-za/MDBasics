@@ -1,3 +1,27 @@
+## 2026-05-02
+
+### Changes
+- Reconstructed and added `docs/FOUNDATION_REDESIGN_PLAN.md` from the archived Codex plan.
+- Began executing the foundation redesign: app-icon menu, tab-row action controls, parked scroll-sync UI, activity rail with Outline/Search/Recents/Settings, Stats/Diff inspector, persistent settings/recent files IPC, and a dormant `scroll-sync` module boundary.
+- Refined the foundation shell spacing: split-pane resize now uses an overlay handle instead of a layout gutter, tab contrast/new-tab placement were tightened, activity pane dock/hover state was separated, inspector resize/collapse controls were adjusted, and editor/scrollbar/icon sizing was tuned.
+- Completed a visual foundation polish pass: added shell hairlines, moved pane controls into per-pane menubars, changed parked scroll sync to a disabled lock, added hover animation and pin docking for the action pane, widened and unified scrollbars, tightened inspector typography/diff margins, and aligned tab/inspector/action controls.
+- Made Settings on the action strip click-only and aligned the hover activity pane visual treatment with context/menu panels using the same restrained surface, hairline, shadow, and subtle accent selection style.
+- Fixed the split-pane separator by removing the competing pane border and making the resize handle draw the single visible hairline from below the pane menubar to the status strip.
+- Simplified shell boundary ownership: the action strip now spans the full workspace height, the status strip remains its own resizing object, docked activity panes use only an integrated separator, floating panes/menus share one surface language, and tab plus/close controls were enlarged and center-aligned.
+- Restored tab/body cohesion by removing the active-tab accent border, lightening the active tab surface, letting the active tab cover its bottom hairline, removing the pane menubar boundary line, extending the split-pane hairline as an overlay, moving the floating action pane closer to the rail, and centering the Settings dialog across the workspace.
+- Tuned the active tab/open-document surface to a 2.5% lift over inactive tabs, removed tab hover fill, gave pane menus 2px more vertical breathing room, corrected floating activity-pane offset to sit 4px from the action strip border, and logged the future collapsed pane-menu handler idea.
+- Added glowing accent dots for the active pane and dirty tabs, changed tab close icons to fade in only on tab hover/focus while replacing the dirty dot, and added a native unsaved-document close warning with Save, Don't Save, and Cancel choices.
+- Fixed line-number gutter behavior for wrapped code lines by giving line-number rows estimated visual heights, preserving a fixed gutter whether numbers are shown or hidden, adding 5px more gutter/text spacing, and refreshing line-number geometry after pane, inspector, activity, and window resize changes.
+- Simplified the textarea line-number gutter back to stable logical line numbers after stress testing showed visual-row estimation breaks under heavy resize and zoom; precise wrapped-line gutters are now explicitly scoped to the CodeMirror migration.
+
+### Health Checks
+- Ran `npm run verify`.
+- Ran `git diff --check`.
+- Restarted the Electron dev app after the spacing and docking pass; no stderr was emitted.
+
+### Notes
+- CodeMirror 6 replacement is still the next major implementation slice; this pass keeps the textarea editor while reshaping the app shell and persistence foundation.
+
 ## v0.1.2 - 2026-05-02
 
 ### Changes

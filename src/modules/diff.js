@@ -1,5 +1,6 @@
 (function () {
-  function buildLineDiff(before, after, escapeHtml) {
+  function buildLineDiff(before, after, escapeHtml, options = {}) {
+    const changesOnly = options.changesOnly !== false;
     if (before === after) {
       return `<div class="diff-empty">No changes from the saved version.</div>`;
     }
@@ -13,6 +14,7 @@
       const left = beforeLines[index];
       const right = afterLines[index];
       if (left === right) {
+        if (changesOnly) continue;
         rows.push(`<div class="diff-line same" data-source-line="${index + 1}"><span>${index + 1}</span><code>${escapeHtml(left || "")}</code></div>`);
       } else {
         if (left !== undefined) rows.push(`<div class="diff-line removed" data-source-line="${index + 1}"><span>${index + 1}</span><code>- ${escapeHtml(left)}</code></div>`);
@@ -20,7 +22,7 @@
       }
     }
 
-    return rows.length ? rows.join("") : `<div class="diff-empty">No changes yet.</div>`;
+    return rows.length ? rows.join("") : `<div class="diff-empty">No changed lines.</div>`;
   }
 
   window.MDBasicsDiff = { buildLineDiff };

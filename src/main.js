@@ -4,6 +4,24 @@ const path = require("path");
 
 const windows = new Set();
 const markdownFilePattern = /\.(md|markdown|mdown|mkd)$/i;
+const settingsFileName = "settings.json";
+
+const defaultSettings = {
+  theme: "dark",
+  accentColor: "#68d8c1",
+  glass: false,
+  editorFont: "Cascadia Code",
+  previewFont: "Segoe UI",
+  showFormattingToolbar: false,
+  showLineNumbers: false,
+  lineWrap: true,
+  scrollSyncAllowed: false,
+  activityPaneWidth: 280,
+  inspectorWidth: 360,
+  lastActivityTool: "outline",
+  recentFiles: [],
+  fileStates: {}
+};
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -89,6 +107,21 @@ ipcMain.handle("dialog:open", async (event) => {
   return Promise.all(result.filePaths.map(readMarkdown));
 });
 
+ipcMain.handle("dialog:confirm-close-unsaved", async (event, payload = {}) => {
+  const owner = BrowserWindow.fromWebContents(event.sender);
+  const result = await dialog.showMessageBox(owner, {
+    type: "warning",
+    title: "Unsaved changes",
+    message: `Save changes to ${payload.title || "this document"}?`,
+    detail: "Your changes will be lost if you close without saving.",
+    buttons: ["Save", "Don't Save", "Cancel"],
+    defaultId: 0,
+    cancelId: 2,
+    noLink: true
+  });
+  return ["save", "discard", "cancel"][result.response] || "cancel";
+});
+
 ipcMain.handle("file:read", async (_event, filePath) => readMarkdown(filePath));
 
 ipcMain.handle("file:save", async (_event, payload) => {
@@ -164,6 +197,27 @@ ipcMain.handle("export:pdf", async (_event, payload) => {
 
 ipcMain.handle("document:print", async (_event, payload) => printHtml(payload.html));
 
+ipcMain.handle("settings:load", async () => loadSettings());
+
+ipcMain.handle("settings:save", async (_event, settings) => {
+  const merged = normalizeSettings(settings);
+  await saveSettings(merged);
+  return merged;
+});
+
+ipcMain.handle("recent-files:list", async () => {
+  const settings = await loadSettings();
+  return settings.recentFiles;
+});
+
+ipcMain.handle("recent-files:add", async (_event, filePath) => {
+  if (!filePath) return [];
+  const settings = await loadSettings();
+  settings.recentFiles = [filePath, ...settings.recentFiles.filter((item) => item !== filePath)].slice(0, 20);
+  await saveSettings(settings);
+  return settings.recentFiles;
+});
+
 ipcMain.handle("window:set-titlebar-theme", async (event, theme) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win || process.platform !== "win32") return null;
@@ -235,6 +289,34 @@ async function exportWordWithPandoc(markdown, outputPath) {
 
   const buffer = Buffer.from(await docxBlob.arrayBuffer());
   await fs.writeFile(outputPath, buffer);
+}
+
+function settingsPath() {
+  return path.join(app.getPath("userData"), settingsFileName);
+}
+
+function normalizeSettings(settings = {}) {
+  return {
+    ...defaultSettings,
+    ...settings,
+    recentFiles: Array.isArray(settings.recentFiles) ? settings.recentFiles.slice(0, 20) : [],
+    fileStates: settings.fileStates && typeof settings.fileStates === "object" ? settings.fileStates : {}
+  };
+}
+
+async function loadSettings() {
+  try {
+    const raw = await fs.readFile(settingsPath(), "utf8");
+    return normalizeSettings(JSON.parse(raw));
+  } catch (error) {
+    if (error.code !== "ENOENT") console.warn(error);
+    return normalizeSettings();
+  }
+}
+
+async function saveSettings(settings) {
+  await fs.mkdir(path.dirname(settingsPath()), { recursive: true });
+  await fs.writeFile(settingsPath(), JSON.stringify(normalizeSettings(settings), null, 2), "utf8");
 }
 
 app.whenReady().then(() => {

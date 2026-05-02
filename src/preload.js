@@ -28,12 +28,17 @@ function markdownToHtml(text) {
 
 contextBridge.exposeInMainWorld("mdb", {
   openFiles: () => ipcRenderer.invoke("dialog:open"),
+  confirmCloseUnsaved: (payload) => ipcRenderer.invoke("dialog:confirm-close-unsaved", payload),
   readFile: (filePath) => ipcRenderer.invoke("file:read", filePath),
   saveFile: (payload) => ipcRenderer.invoke("file:save", payload),
   exportHtml: (payload) => ipcRenderer.invoke("export:html", payload),
   exportPdf: (payload) => ipcRenderer.invoke("export:pdf", payload),
   exportWord: (payload) => ipcRenderer.invoke("export:word", payload),
   printDocument: (payload) => ipcRenderer.invoke("document:print", payload),
+  loadSettings: () => ipcRenderer.invoke("settings:load"),
+  saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
+  listRecentFiles: () => ipcRenderer.invoke("recent-files:list"),
+  addRecentFile: (filePath) => ipcRenderer.invoke("recent-files:add", filePath),
   setTitlebarTheme: (theme) => ipcRenderer.invoke("window:set-titlebar-theme", theme),
   markdownToHtml,
   htmlToMarkdown: (html) => turndown.turndown(html || ""),
