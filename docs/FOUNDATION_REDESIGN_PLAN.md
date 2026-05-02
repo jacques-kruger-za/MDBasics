@@ -19,6 +19,9 @@ Last updated: 2026-05-02
 - Empty state: larger logo and Open Document / New Document options when no document is open.
 - Visual cleanup pass: action strip/status strip boundary ownership, floating menu shared styling, subdued hover accents, widened minimal scrollbars, and activity-pane hover position corrected.
 - Shell CSS token cleanup: app chrome, document surface, active/inactive tabs, action strip, inspector, status strip, shell hairlines, resize hairlines, hover tints, active accents, and muted text now route through named shell tokens while editor syntax tokens remain deferred to CodeMirror.
+- CodeMirror 6 first pass: Code panes now mount CodeMirror through a bundled adapter, preserve open/edit/preview/split-pane document state, use CodeMirror gutters for line numbers, and keep the existing Markdown edit tricks routed through the adapter.
+- Official `@codemirror/lang-markdown` is now the authoritative Markdown baseline: parser, fenced-code language support, Markdown keymap, list/blockquote continuation, and markup deletion are enabled explicitly before MDBasics custom fallbacks.
+- Added CodeMirror-native Markdown modules: `markdown-commands.js` owns editor transactions for inline/line edits, and `markdown-rich-view.js` owns visual Markdown decorations for bold, italic, headings, inline code, and syntax-marker fading.
 - Build baseline: Windows installer builds successfully as `dist/MDBasics-0.1.2-Setup-x64.exe`.
 
 ### Partially Implemented / Needs Hardening
@@ -29,19 +32,24 @@ Last updated: 2026-05-02
 - Line numbers are stable logical line numbers only. Wrapped-line alignment remains a known bug under aggressive wrapping, zoom, pane resize, and window resize.
 
 ### Remaining Work Queue
-1. Replace the textarea editor with CodeMirror 6.
-2. Rebuild line numbers using CodeMirror gutters and delete the fragile textarea gutter assumptions.
-3. Port current Markdown editing behavior into CodeMirror: slash menu, Ctrl+B/I/U, block shortcuts, list continuation, table editing, context menus, undo/redo, and split-pane shared text.
-4. Add CodeMirror Markdown syntax styling profiles: None, Clean Markdown, Obsidian-like, VS Code-like, Minimal Writer.
-5. Add folding for headings, nested list sections, fenced code blocks, and tables.
-6. Make formatting toolbar buttons reflect active formatting state where CodeMirror can detect it.
-7. Finish per-file/session restore: last active tab, recent workspace state, and stronger persistence around reopened files.
-8. Harden Search/Replace UX after CodeMirror integration.
-9. Define the first supported user-customization surface after CodeMirror theme integration.
-10. Configure a real application icon so packaged builds no longer use the default Electron icon.
+1. Continue shrinking renderer compatibility fallbacks as CodeMirror command coverage grows.
+2. Build the visual richness customization surface:
+   - app display variants,
+   - editor Markdown representation profiles,
+   - preview/export presentation profiles,
+   - density presets,
+   - syntax-marker visibility modes,
+   - persisted font/profile settings.
+3. Add CodeMirror Markdown syntax styling profiles: None, Clean Markdown, Obsidian-like, VS Code-like, Minimal Writer, Technical.
+4. Add folding for headings, nested list sections, fenced code blocks, and tables.
+5. Make formatting toolbar buttons reflect active formatting state where CodeMirror can detect it.
+6. Move slash commands toward a CodeMirror completion source.
+7. Move Search/Replace toward CodeMirror search state and decorations.
+8. Finish per-file/session restore: last active tab, recent workspace state, and stronger persistence around reopened files.
+9. Configure a real application icon so packaged builds no longer use the default Electron icon.
 
 ### Known Bugs / Deferred Decisions
-- Textarea line numbers are intentionally not being improved further; CodeMirror owns the proper fix.
+- The textarea line-number bug is resolved for Code panes by CodeMirror gutters. Continue testing aggressive wrapping, zoom, pane resize, and window resize.
 - Scroll sync and scroll anchoring are parked. Controls remain visible but disabled.
 - App-icon menu feature set, shortcut labels, submenu sequencing, and type-to-filter reset behavior are parked for future workflow testing.
 - Pane-menu collapse into a `...` handler is logged as future UI work, not part of this pass.
@@ -147,9 +155,20 @@ Last updated: 2026-05-02
   - GitHub Light inspired
   - Catppuccin Mocha inspired
   - Catppuccin Latte inspired
+- Expand app display variants as first-class presets:
+  - Native Compact: quiet, dense, Windows-native feeling.
+  - Glass Workspace: subtle transparency and softer panels where OS support allows it.
+  - Writer Focus: low chrome, calm document surface, fewer visible controls.
+  - Technical Workspace: stronger pane boundaries, clearer gutters, stronger code/table affordances.
+  - Minimal Paper: light document-first surface with muted chrome.
 - Accent color applies to selections, active pane line, active icons, menu selection, and active tab.
 - Editor fonts: Cascadia Code, JetBrains Mono, Fira Code, Consolas, Segoe UI, Inter.
 - Preview/export fonts: Segoe UI, Aptos, Georgia, Cambria, Inter.
+- Add density presets:
+  - Compact,
+  - Comfortable,
+  - Spacious.
+- App display variants must be implemented through semantic tokens and classes, not one-off component overrides.
 
 ### Editor Syntax And Folding
 - Add selectable Markdown syntax visual styles:
@@ -158,9 +177,27 @@ Last updated: 2026-05-02
   - Obsidian-like
   - VS Code-like
   - Minimal Writer
+  - Technical
 - Style headings, bold, italic, underline tags, inline code, links, block quotes, lists, tasks, table headers, horizontal rules, and fenced code blocks.
 - Add generic fenced-code styling without language-specific parsing.
+- Add editor representation controls:
+  - Syntax markers: Show, Fade, Hide outside cursor context.
+  - Heading treatment: Plain, Scaled, Editorial.
+  - Code block treatment: Plain, Panel, Terminal-like.
+  - Quote/callout treatment: Plain, Accent rail, Soft panel.
+  - Table treatment: Raw Markdown, Header emphasis, Grid-assisted.
 - Add folding for headings, nested list sections, fenced code blocks, and tables.
+
+### Preview And Export Presentation
+- Add selectable preview/export presentation profiles independent from the editor representation:
+  - GitHub,
+  - Document,
+  - Report,
+  - Minimal,
+  - Academic,
+  - Notion-like.
+- Preview/export profiles control document typography, heading scale, table styling, code-block styling, blockquote/callout styling, and print/PDF spacing.
+- Editor style and preview/export style must remain independent because editing readability and final document presentation are different workflows.
 
 ## Test Plan
 - No-doc screen centers logo/button in main editor area.

@@ -17,6 +17,29 @@
 - Consolidated shell CSS tokens for chrome surfaces, tabs, document canvas, action strip, inspector, status strip, hairlines, resize lines, hover tints, and active accents without changing the intended visual foundation.
 - Removed redundant hidden document-toolbar and topbar pane-control wiring now that split/view/sync controls live in each pane menubar.
 - Hardened hidden PDF/print windows so failed export or print setup cannot leave an offscreen BrowserWindow open.
+- Added CodeMirror 6 as the Code pane editor through a bundled adapter, preserving open/edit/preview/split-pane state and routing existing Markdown editing tricks through CodeMirror-backed selections and transactions.
+- Replaced the fragile textarea line-number gutter with CodeMirror gutters while keeping the editor text column stable when line numbers are hidden.
+- Added `docs/CODEMIRROR_EDITING_MAP.md` to track how bold, italic, underline, headings, tables, right-click menus, slash commands, and the formatting toolbar map onto the new editor engine.
+- Fixed first-pass CodeMirror regressions: transparent pane-matched gutters, fixed-size line numbers under zoom, subtle accent active-line tint, app-standard scrollbars, and stable textarea-style selection setters for existing formatting/Tab/Enter commands.
+- Enabled official `@codemirror/lang-markdown` keymap and commands explicitly so Markdown continuation/deletion behavior uses the CodeMirror package as the compatibility baseline before MDBasics fallbacks.
+- Added `markdown-commands.js` for CodeMirror transaction-based inline and line editing, then rewired renderer formatting, table, slash, and insertion helpers to delegate to those commands when CodeMirror is active.
+- Added `markdown-rich-view.js` for hybrid Markdown decorations: bold, italic, headings, inline code, and syntax-marker fading outside the active cursor context.
+- Extended inline-format exit behavior to underline, strikethrough, backticks, quotes, square brackets, parentheses, braces, and angle brackets.
+- Refined inline-format exit behavior so single Space stays inside formatting, while Tab, Enter, repeated closing character/format command, right-click, and double Space exit the wrapper.
+- Updated Enter while exiting inline formatting so it keeps the current block context, such as bullet, numbered, task, or quote, and leaves block exit to the next empty Enter.
+- Normalized Enter behavior for quote blocks, fenced code blocks, and tables: continue the structure from populated content and exit on the next empty structure line/row.
+- Added list indentation with Tab/Shift+Tab and table cell navigation with Ctrl+Arrow keys.
+- Fixed Enter handling priority so raw code fences create a closing fence and quotes/fenced code exit on the second Enter from an empty continuation line.
+- Moved MDBasics key handling into CodeMirror's event pipeline ahead of Markdown keymaps and removed the redundant blank exit line from fenced code blocks.
+- Disabled CodeMirror backtick auto-pairing so manually typed code fences remain three backticks, and renumbered ordered-list blocks after Tab/Shift+Tab indentation changes.
+- Preserved explicit CodeMirror cursor targets through the renderer `replaceRange` wrapper so manual code-fence insertion lands inside the fenced block.
+- Made inline Space handling stateful so single Space stays inside formatting and only a second consecutive Space exits the wrapper.
+- Changed double-Space inline-format exit to remove the first typed space instead of leaving it inside the wrapper.
+- Preserved one outside separator space when double-Space exits inline formatting.
+- Added Markdown-aware backtick handling so paragraph backticks create/exit inline code while empty-line backticks remain raw for fenced code blocks.
+- Added a shared block-exit spacing normalizer so lists, quotes, fenced code blocks, and tables exit with one markdownlint-friendly blank separator before normal editing resumes.
+- Extended block spacing normalization to headings and horizontal dividers for both slash/toolbar insertion and manual Enter from the block line.
+- Expanded the foundation roadmap to make visual richness explicit across app display variants, editor representation profiles, preview/export presentation profiles, density presets, and syntax-marker visibility modes.
 
 ### Health Checks
 - Ran `npm run verify`.

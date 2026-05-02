@@ -213,6 +213,17 @@
     return replaceTable(value, table, rows, table.alignments, row, col);
   }
 
+  function moveToCell(value, position, rowIndex, colIndex) {
+    const table = analyze(value, position);
+    if (!table) return null;
+    const row = clamp(rowIndex, 0, table.rows.length - 1);
+    const col = clamp(colIndex, 0, table.columnCount - 1);
+    return {
+      value,
+      cursor: getCellPosition(value, table.start, row, col)
+    };
+  }
+
   function insertRow(value, position, where) {
     const table = analyze(value, position);
     if (!table) return null;
@@ -286,6 +297,7 @@
     insertColumn,
     insertRow,
     moveCell,
+    moveToCell,
     setAlignment
   };
 })();

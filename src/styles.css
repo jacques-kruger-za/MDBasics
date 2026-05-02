@@ -1389,6 +1389,117 @@ body.activity-visible .settings-overlay {
   position: relative;
 }
 
+.codemirror-wrap {
+  display: block;
+}
+
+.mdb-codemirror,
+.mdb-codemirror .cm-editor,
+.mdb-codemirror .cm-scroller {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.mdb-codemirror {
+  color: var(--text);
+}
+
+.mdb-codemirror .cm-editor {
+  outline: 0;
+}
+
+.mdb-codemirror .cm-focused {
+  outline: 0;
+}
+
+.mdb-codemirror .cm-scroller {
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.mdb-codemirror .cm-content {
+  min-height: 100%;
+  padding: 8px 36px 44px 13px;
+  caret-color: var(--accent);
+}
+
+.mdb-codemirror .cm-gutters {
+  background: transparent !important;
+  border-right: 0;
+  color: color-mix(in srgb, var(--muted) 48%, transparent);
+}
+
+.mdb-codemirror .cm-lineNumbers .cm-gutterElement {
+  padding: 0 9px 0 0;
+  min-width: 34px;
+  font-size: 11px !important;
+}
+
+.mdb-codemirror .cm-lineNumbers {
+  min-width: 43px;
+}
+
+.mdb-codemirror .cm-activeLine,
+.mdb-codemirror .cm-activeLineGutter {
+  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
+}
+
+.mdb-codemirror .cm-selectionBackground,
+.mdb-codemirror.cm-focused .cm-selectionBackground {
+  background: var(--selection-bg);
+}
+
+.mdb-codemirror .cm-md-syntax-muted {
+  color: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+.mdb-codemirror .cm-md-syntax-hidden {
+  opacity: 0.12;
+}
+
+.mdb-codemirror .cm-md-bold {
+  font-weight: 750;
+  color: color-mix(in srgb, var(--text) 94%, var(--accent));
+}
+
+.mdb-codemirror .cm-md-italic {
+  font-style: italic;
+  color: color-mix(in srgb, var(--text) 92%, var(--accent));
+}
+
+.mdb-codemirror .cm-md-inline-code {
+  padding: 0 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface-raised) 56%, transparent);
+  color: color-mix(in srgb, var(--accent) 72%, var(--text));
+}
+
+.mdb-codemirror .cm-md-heading-line {
+  color: var(--text);
+}
+
+.mdb-codemirror .cm-md-heading-marker {
+  color: color-mix(in srgb, var(--muted) 46%, transparent);
+}
+
+.mdb-codemirror .cm-md-heading {
+  font-weight: 780;
+  color: var(--text);
+}
+
+.mdb-codemirror .cm-md-heading-1 {
+  font-size: 1.55em;
+}
+
+.mdb-codemirror .cm-md-heading-2 {
+  font-size: 1.32em;
+}
+
+.mdb-codemirror .cm-md-heading-3 {
+  font-size: 1.16em;
+}
+
 .code-editor-wrap.show-lines {
   grid-template-columns: 43px minmax(0, 1fr);
 }
@@ -1457,6 +1568,7 @@ body.activity-visible .settings-overlay {
 }
 
 .code-editor,
+.mdb-codemirror .cm-scroller,
 .pane-preview,
 #diffInspectorContent,
 .activity-pane-content {
@@ -1465,6 +1577,7 @@ body.activity-visible .settings-overlay {
 }
 
 .code-editor::-webkit-scrollbar,
+.mdb-codemirror .cm-scroller::-webkit-scrollbar,
 .pane-preview::-webkit-scrollbar,
 #diffInspectorContent::-webkit-scrollbar,
 .activity-pane-content::-webkit-scrollbar {
@@ -1473,6 +1586,7 @@ body.activity-visible .settings-overlay {
 }
 
 .code-editor::-webkit-scrollbar-button,
+.mdb-codemirror .cm-scroller::-webkit-scrollbar-button,
 .pane-preview::-webkit-scrollbar-button,
 #diffInspectorContent::-webkit-scrollbar-button,
 .activity-pane-content::-webkit-scrollbar-button {
@@ -1482,6 +1596,7 @@ body.activity-visible .settings-overlay {
 }
 
 .code-editor::-webkit-scrollbar-track,
+.mdb-codemirror .cm-scroller::-webkit-scrollbar-track,
 .pane-preview::-webkit-scrollbar-track,
 #diffInspectorContent::-webkit-scrollbar-track,
 .activity-pane-content::-webkit-scrollbar-track {
@@ -1489,6 +1604,7 @@ body.activity-visible .settings-overlay {
 }
 
 .code-editor::-webkit-scrollbar-thumb,
+.mdb-codemirror .cm-scroller::-webkit-scrollbar-thumb,
 .pane-preview::-webkit-scrollbar-thumb,
 #diffInspectorContent::-webkit-scrollbar-thumb,
 .activity-pane-content::-webkit-scrollbar-thumb {
@@ -1499,6 +1615,7 @@ body.activity-visible .settings-overlay {
 }
 
 .code-editor:hover::-webkit-scrollbar-thumb,
+.mdb-codemirror .cm-scroller:hover::-webkit-scrollbar-thumb,
 .pane-preview:hover::-webkit-scrollbar-thumb,
 #diffInspectorContent:hover::-webkit-scrollbar-thumb,
 .activity-pane-content:hover::-webkit-scrollbar-thumb {

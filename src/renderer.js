@@ -73,6 +73,7 @@
   let searchMatches = [];
   let activeSearchIndex = 0;
   let recentFiles = [];
+  let inlineSpaceExitCandidate = null;
   let appSettings = {
     theme: "dark",
     accentColor: "#68d8c1",
@@ -419,31 +420,36 @@ Code block
 
     if (paneState.view === VIEW_CODE) {
       const wrap = document.createElement("div");
-      wrap.className = `code-editor-wrap pane-code ${showLineNumbers ? "show-lines" : ""}`;
-      wrap.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
+      wrap.className = `code-editor-wrap pane-code codemirror-wrap ${showLineNumbers ? "show-lines" : ""}`;
       if (!lineWrap) wrap.classList.add("no-wrap");
 
-      const lineNumbers = document.createElement("pre");
-      lineNumbers.className = "line-numbers";
-      lineNumbers.setAttribute("aria-hidden", "true");
-      const textarea = document.createElement("textarea");
-      textarea.className = "code-editor";
-      textarea.spellcheck = false;
-      textarea.setAttribute("aria-label", `${paneId === PANE_PRIMARY ? "Left" : "Right"} Markdown code editor`);
-      const ghostText = document.createElement("pre");
-      ghostText.className = "ghost-text";
-      ghostText.setAttribute("aria-hidden", "true");
-
-      wrap.appendChild(lineNumbers);
-      wrap.appendChild(textarea);
-      wrap.appendChild(ghostText);
       body.appendChild(wrap);
 
       node.wrap = wrap;
-      node.textarea = textarea;
-      node.lineNumbers = lineNumbers;
-      node.ghostText = ghostText;
-      bindTextarea(textarea, paneId);
+      const editor = window.MDBasicsCodeMirror.createMarkdownEditor({
+        parent: wrap,
+        value: doc.text,
+        lineWrapping: lineWrap,
+        lineNumbers: showLineNumbers,
+        fontSize: 15 * (getDocZoom(doc) / 100),
+        onFocus: () => setActivePane(paneId, true),
+        onChange: () => handlePaneInput(paneId, editor),
+        onCursor: () => handlePaneCursor(paneId, editor),
+        onScroll: () => handlePaneScroll(paneId, editor),
+        onWheel: (event) => {
+          if (!event.ctrlKey) return;
+          event.preventDefault();
+          setEditorZoom(getDocZoom() + (event.deltaY < 0 ? 10 : -10));
+        },
+        onContextMenu: showContextMenu,
+        onKeydown: handleCodeKeydown,
+        onKeyup: (event) => {
+          handlePaneCursor(paneId, editor);
+          maybeShowSlashMenu(event);
+        }
+      });
+      editor.dom.setAttribute("aria-label", `${paneId === PANE_PRIMARY ? "Left" : "Right"} Markdown code editor`);
+      node.textarea = editor;
     } else {
       const preview = document.createElement("div");
       preview.className = "markdown-body pane-preview";
@@ -552,7 +558,7 @@ Code block
 
     if (focusedPaneId) {
       const node = paneNodes.get(focusedPaneId);
-      if (node?.textarea && document.activeElement === node.textarea) node.textarea.focus();
+      if (node?.textarea?.hasFocus?.()) node.textarea.focus();
     }
     renderInspector();
     updateStatus();
@@ -563,7 +569,7 @@ Code block
     const previousScrollLeft = node.textarea.scrollLeft;
     const previousSelectionStart = node.textarea.selectionStart;
     const previousSelectionEnd = node.textarea.selectionEnd;
-    const wasFocused = document.activeElement === node.textarea;
+    const wasFocused = Boolean(node.textarea.hasFocus?.());
     if (node.textarea.value !== doc.text) node.textarea.value = doc.text;
     const cursor = Math.min(state.cursor, doc.text.length);
     const selectionEnd = Math.min(state.selectionEnd ?? cursor, doc.text.length);
@@ -571,11 +577,12 @@ Code block
       node.textarea.selectionStart = Math.min(previousSelectionStart ?? cursor, doc.text.length);
       node.textarea.selectionEnd = Math.min(previousSelectionEnd ?? selectionEnd, doc.text.length);
     }
-    node.textarea.classList.toggle("no-wrap", !lineWrap);
+    node.textarea.setLineWrapping?.(lineWrap);
+    node.textarea.setLineNumbers?.(showLineNumbers);
     node.wrap?.classList.toggle("show-lines", showLineNumbers);
     node.wrap?.classList.toggle("no-wrap", !lineWrap);
     node.wrap?.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
-    node.textarea.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
+    node.textarea.setFontSize?.(15 * (getDocZoom(doc) / 100));
     node.textarea.scrollTop = wasFocused ? previousScrollTop : state.scrollTop ?? previousScrollTop ?? 0;
     node.textarea.scrollLeft = previousScrollLeft || 0;
     updateLineNumbers(node, doc);
@@ -1543,32 +1550,112 @@ Code block
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "t") {
       event.preventDefault();
       applyLineCommand(slashCommands.find((command) => command.marker === "table"), false);
-      return;
+      return true;
     }
     if (event.ctrlKey || event.metaKey) {
       const key = event.key.toLowerCase();
-      if (key === "enter" && exitTable(event)) return;
+      if (key === "enter" && exitTable(event)) return true;
+      if (event.key.startsWith("Arrow") && handleTableArrowNavigation(event)) return true;
       if (key === "b") {
         event.preventDefault();
         wrapCodeSelection("**", "**");
-        return;
+        return true;
       }
       if (key === "i") {
         event.preventDefault();
         wrapCodeSelection("_", "_");
-        return;
+        return true;
       }
       if (key === "u") {
         event.preventDefault();
         wrapCodeSelection("<u>", "</u>");
-        return;
+        return true;
       }
     }
-    if ((event.key === " " || event.key === "Enter") && exitInlineFormatting(event)) return;
-    if (event.key === "Tab" && handleTableTab(event)) return;
-    if (event.key === "Enter" && handleTableEnter(event)) return;
-    if (event.key === "Enter" && handleMarkdownEnter(event)) return;
-    if (event.key === "Tab") insertCodeTab(event);
+    if (handleInlineSpaceKey(event)) return true;
+    if (event.key !== " ") inlineSpaceExitCandidate = null;
+    if (event.key === "`" && handleInlineBacktickKey(event)) return true;
+    if ((event.key === "Enter" || event.key === "Tab" || isInlineExitCharacter(event.key)) && exitInlineFormatting(event)) return true;
+    if (event.key === "Tab" && handleListTab(event)) return true;
+    if (event.key === "Tab" && handleTableTab(event)) return true;
+    if (event.key === "Enter" && handleTableEnter(event)) return true;
+    if (event.key === "Enter" && handleCodeFenceEnter(event)) return true;
+    if (event.key === "Enter" && handleMarkdownEnter(event)) return true;
+    if (event.key === "Enter" && getActiveTextarea()?.continueMarkdownMarkup?.()) {
+      event.preventDefault();
+      return true;
+    }
+    if (event.key === "Backspace" && getActiveTextarea()?.deleteMarkdownMarkupBackward?.()) {
+      event.preventDefault();
+      return true;
+    }
+    if (event.key === "Tab") {
+      insertCodeTab(event);
+      return true;
+    }
+    return false;
+  }
+
+  function isInlineExitCharacter(key) {
+    return ["`", "\"", "'", "]", ")", "}", ">"].includes(key);
+  }
+
+  function handleInlineSpaceKey(event) {
+    if (event.key !== " ") return false;
+    const editor = getActiveTextarea();
+    if (!editor || editor.selectionStart !== editor.selectionEnd) {
+      inlineSpaceExitCandidate = null;
+      return false;
+    }
+    const cursor = editor.selectionStart;
+    const marker = getInlineClosingMarkerAtCursor(editor.value, cursor);
+    if (!marker) {
+      inlineSpaceExitCandidate = null;
+      return false;
+    }
+    if (
+      inlineSpaceExitCandidate
+      && inlineSpaceExitCandidate.cursor === cursor
+      && inlineSpaceExitCandidate.marker === marker
+      && editor.value.slice(cursor - 1, cursor) === " "
+    ) {
+      inlineSpaceExitCandidate = null;
+      event.preventDefault();
+      return exitInlineFormatting(event);
+    }
+    inlineSpaceExitCandidate = { cursor: cursor + 1, marker };
+    return false;
+  }
+
+  function getInlineClosingMarkerAtCursor(value, cursor) {
+    const markers = ["</u>", "**", "~~", "_", "`", "\"", "'", "]", ")", "}", ">"];
+    return markers.find((marker) => value.slice(cursor, cursor + marker.length) === marker) || null;
+  }
+
+  function handleInlineBacktickKey(event) {
+    const editor = getActiveTextarea();
+    if (!editor) return false;
+    const cursor = editor.selectionStart;
+    const selectionEnd = editor.selectionEnd;
+    if (cursor !== selectionEnd) {
+      event.preventDefault();
+      wrapCodeSelection("`", "`");
+      return true;
+    }
+    if (editor.value.slice(cursor, cursor + 1) === "`") {
+      event.preventDefault();
+      return exitInlineFormatting(event);
+    }
+
+    const info = getCurrentLineInfo();
+    const beforeOnLine = editor.value.slice(info.start, cursor);
+    const afterOnLine = editor.value.slice(cursor, info.end);
+    const couldBecomeFence = /^\s*`{0,2}$/.test(beforeOnLine) && afterOnLine.trim() === "";
+    if (couldBecomeFence) return false;
+
+    event.preventDefault();
+    replaceRange(cursor, cursor, "``", cursor + 1);
+    return true;
   }
 
   function getShortcutCommand(key) {
@@ -1602,8 +1689,7 @@ Code block
     if (task) {
       event.preventDefault();
       if (task[2].trim() === "") {
-        replaceRange(info.start, info.end, "");
-        setSelection(info.start);
+        exitEmptyContinuationLine(info.start, info.end, "Exited list");
         return true;
       }
       insertAtSelection(`\n${task[1]}- [ ] `);
@@ -1614,8 +1700,7 @@ Code block
     if (numbered) {
       event.preventDefault();
       if (numbered[3].trim() === "") {
-        replaceRange(info.start, info.end, "");
-        setSelection(info.start);
+        exitEmptyContinuationLine(info.start, info.end, "Exited list");
         return true;
       }
       insertAtSelection(`\n${numbered[1]}${Number(numbered[2]) + 1}. `);
@@ -1626,8 +1711,7 @@ Code block
     if (bullet) {
       event.preventDefault();
       if (bullet[3].trim() === "") {
-        replaceRange(info.start, info.end, "");
-        setSelection(info.start);
+        exitEmptyContinuationLine(info.start, info.end, "Exited list");
         return true;
       }
       insertAtSelection(`\n${bullet[1]}${bullet[2]} `);
@@ -1638,21 +1722,113 @@ Code block
     if (quote) {
       event.preventDefault();
       if (quote[2].trim() === "") {
-        replaceRange(info.start, info.end, "");
-        setSelection(info.start);
+        exitEmptyContinuationLine(info.start, info.end, "Exited quote");
         return true;
       }
       insertAtSelection(`\n${quote[1]}`);
       return true;
     }
 
+    if (/^#{1,6}\s+\S/.test(trimmed) && info.cursor >= info.end) {
+      event.preventDefault();
+      const result = normalizeBlankLineAfterInsertion(editor.value, info.end);
+      replaceRange(result.from, result.to, result.insert, result.cursor);
+      setStatus("Exited heading");
+      return true;
+    }
+
+    if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed) && info.cursor >= info.end) {
+      event.preventDefault();
+      const result = normalizeBlankLineAfterInsertion(editor.value, info.end);
+      replaceRange(result.from, result.to, result.insert, result.cursor);
+      setStatus("Exited divider");
+      return true;
+    }
+
     if (/^```/.test(trimmed)) {
       event.preventDefault();
-      insertAtSelection("\n");
+      const nextLineStart = info.end + 1;
+      const nextLineEndIndex = editor.value.indexOf("\n", nextLineStart);
+      const nextLineEnd = nextLineEndIndex === -1 ? editor.value.length : nextLineEndIndex;
+      const nextLine = editor.value.slice(nextLineStart, nextLineEnd);
+      if (/^\s*```/.test(nextLine)) {
+        insertAtSelection("\n");
+        return true;
+      }
+      replaceRange(info.end, info.end, "\n\n```", info.end + 1);
       return true;
     }
 
     return false;
+  }
+
+  function handleCodeFenceEnter(event) {
+    const editor = getActiveTextarea();
+    if (!editor) return false;
+    const info = getCurrentLineInfo();
+    const trimmed = info.line.trim();
+    const isAlreadyInsideFence = isInsideCodeFence(editor.value, info.start);
+    if (/^```[\w-]*\s*$/.test(trimmed) && !isAlreadyInsideFence) {
+      event.preventDefault();
+      const nextLineStart = info.end + 1;
+      const nextLineEndIndex = editor.value.indexOf("\n", nextLineStart);
+      const nextLineEnd = nextLineEndIndex === -1 ? editor.value.length : nextLineEndIndex;
+      const nextLine = editor.value.slice(nextLineStart, nextLineEnd);
+      if (/^\s*```/.test(nextLine)) {
+        insertAtSelection("\n");
+        return true;
+      }
+      replaceRange(info.end, info.end, "\n\n```", info.end + 1);
+      return true;
+    }
+    if (!isAlreadyInsideFence) return false;
+    const nextLineStart = info.end + 1;
+    const nextLineEndIndex = editor.value.indexOf("\n", nextLineStart);
+    const nextLineEnd = nextLineEndIndex === -1 ? editor.value.length : nextLineEndIndex;
+    const nextLine = editor.value.slice(nextLineStart, nextLineEnd);
+    const exitsAtClosingFence = info.line.trim() === "" && /^\s*```/.test(nextLine);
+
+    event.preventDefault();
+    if (exitsAtClosingFence) {
+      const result = normalizeBlankLineAfterReplacement(editor.value, info.start, nextLineEnd, nextLine);
+      replaceRange(result.from, result.to, result.insert, result.cursor);
+      setStatus("Exited code block");
+      return true;
+    }
+
+    insertAtSelection("\n");
+    return true;
+  }
+
+  function exitEmptyContinuationLine(start, end, message) {
+    const editor = getActiveTextarea();
+    if (!editor) return;
+    const result = normalizeBlankLineAfterReplacement(editor.value, start, end, "");
+    replaceRange(result.from, result.to, result.insert, result.cursor);
+    setStatus(message);
+  }
+
+  function normalizeBlankLineAfterReplacement(value, from, to, insert) {
+    let tailStart = to;
+    while (value[tailStart] === "\n") tailStart += 1;
+    const insertText = insert ? `${insert}\n\n` : "\n";
+    return {
+      from,
+      to: tailStart,
+      insert: insertText,
+      cursor: from + insertText.length
+    };
+  }
+
+  function normalizeBlankLineAfterInsertion(value, position) {
+    let tailStart = position;
+    while (value[tailStart] === "\n") tailStart += 1;
+    return {
+      from: position,
+      to: tailStart,
+      insert: "\n\n",
+      cursor: position + 2
+    };
   }
 
   function isInsideCodeFence(value, position) {
@@ -1669,6 +1845,91 @@ Code block
     insertAtSelection("\t");
   }
 
+  function handleListTab(event) {
+    const editor = getActiveTextarea();
+    if (!editor) return false;
+    const info = getCurrentLineInfo();
+    if (!/^(\s*)([-*+]|\d+\.|-\s\[[ xX]\])\s/.test(info.line)) return false;
+    event.preventDefault();
+    const isOrdered = /^\s*\d+\.\s/.test(info.line);
+    if (event.shiftKey) {
+      const remove = info.line.startsWith("  ") ? 2 : info.line.startsWith("\t") ? 1 : 0;
+      if (!remove) return true;
+      const nextValue = `${editor.value.slice(0, info.start)}${editor.value.slice(info.start + remove)}`;
+      const nextCursor = Math.max(info.start, info.cursor - remove);
+      applyListTabResult(nextValue, nextCursor, isOrdered);
+      return true;
+    }
+    const nextValue = `${editor.value.slice(0, info.start)}  ${editor.value.slice(info.start)}`;
+    applyListTabResult(nextValue, info.cursor + 2, isOrdered);
+    return true;
+  }
+
+  function applyListTabResult(value, cursor, shouldRenumber) {
+    const result = shouldRenumber ? normalizeOrderedListNumbers(value, cursor) : { value, cursor };
+    const editor = getActiveTextarea();
+    replaceRange(0, editor.value.length, result.value, result.cursor);
+  }
+
+  function normalizeOrderedListNumbers(value, cursor) {
+    const lines = value.split("\n");
+    const lineStarts = [];
+    let position = 0;
+    for (const line of lines) {
+      lineStarts.push(position);
+      position += line.length + 1;
+    }
+
+    const lineIndex = getLineIndexAtPosition(lineStarts, lines, cursor);
+    if (!isMarkdownListLine(lines[lineIndex])) return { value, cursor };
+
+    let start = lineIndex;
+    while (start > 0 && isMarkdownListLine(lines[start - 1])) start -= 1;
+    let end = lineIndex;
+    while (end < lines.length - 1 && isMarkdownListLine(lines[end + 1])) end += 1;
+
+    const counters = new Map();
+    let nextCursor = cursor;
+    const normalized = [...lines];
+    for (let index = start; index <= end; index += 1) {
+      const match = normalized[index].match(/^(\s*)(\d+)(\.\s.*)$/);
+      if (!match) continue;
+      const depth = getIndentWidth(match[1]);
+      for (const key of [...counters.keys()]) {
+        if (key > depth) counters.delete(key);
+      }
+      const nextNumber = (counters.get(depth) || 0) + 1;
+      counters.set(depth, nextNumber);
+
+      const oldNumber = match[2];
+      const newNumber = String(nextNumber);
+      if (oldNumber === newNumber) continue;
+
+      const numberStart = lineStarts[index] + match[1].length;
+      const numberEnd = numberStart + oldNumber.length;
+      const diff = newNumber.length - oldNumber.length;
+      normalized[index] = `${match[1]}${newNumber}${match[3]}`;
+      if (cursor > numberEnd) nextCursor += diff;
+    }
+
+    return { value: normalized.join("\n"), cursor: nextCursor };
+  }
+
+  function getLineIndexAtPosition(lineStarts, lines, cursor) {
+    for (let index = lineStarts.length - 1; index >= 0; index -= 1) {
+      if (cursor >= lineStarts[index]) return index;
+    }
+    return Math.min(lines.length - 1, 0);
+  }
+
+  function isMarkdownListLine(line) {
+    return /^(\s*)([-*+]|\d+\.|-\s\[[ xX]\])\s/.test(line);
+  }
+
+  function getIndentWidth(indent) {
+    return indent.replace(/\t/g, "  ").length;
+  }
+
   function handleTableTab(event) {
     const editor = getActiveTextarea();
     if (!window.MDBasicsTableEditing || !editor) return false;
@@ -1679,14 +1940,45 @@ Code block
     return true;
   }
 
+  function handleTableArrowNavigation(event) {
+    const editor = getActiveTextarea();
+    const table = window.MDBasicsTableEditing?.analyze(editor?.value || "", editor?.selectionStart || 0);
+    if (!editor || !table) return false;
+    event.preventDefault();
+
+    let targetRow = table.dataRowIndex;
+    let targetCol = table.colIndex;
+    if (event.key === "ArrowRight") targetCol += 1;
+    if (event.key === "ArrowLeft") targetCol -= 1;
+    if (event.key === "ArrowDown") targetRow += 1;
+    if (event.key === "ArrowUp") targetRow -= 1;
+
+    targetRow = clamp(targetRow, 0, table.rows.length - 1);
+    targetCol = clamp(targetCol, 0, table.columnCount - 1);
+    const result = window.MDBasicsTableEditing.moveToCell?.(editor.value, editor.selectionStart, targetRow, targetCol);
+    if (result) {
+      setSelection(result.cursor);
+      editor.focus();
+      setStatus("Table cell");
+    }
+    return true;
+  }
+
   function handleTableEnter(event) {
     const editor = getActiveTextarea();
     if (!window.MDBasicsTableEditing || !editor) return false;
+    const table = window.MDBasicsTableEditing.analyze(editor.value, editor.selectionStart);
+    if (table && isEmptyTableDataRow(table)) return exitTable(event);
     const result = window.MDBasicsTableEditing.insertRow(editor.value, editor.selectionStart, "below");
     if (!result) return false;
     event.preventDefault();
     applyTableResult(result, "Inserted table row");
     return true;
+  }
+
+  function isEmptyTableDataRow(table) {
+    const row = table.rows?.[table.dataRowIndex];
+    return Array.isArray(row) && row.every((cell) => String(cell || "").trim() === "");
   }
 
   function exitTable(event) {
@@ -1695,10 +1987,8 @@ Code block
     const table = window.MDBasicsTableEditing.analyze(editor.value, editor.selectionStart);
     if (!table) return false;
     event.preventDefault();
-    const insertionPoint = table.end;
-    const suffix = editor.value[insertionPoint] === "\n" ? "\n" : "\n\n";
-    editor.value = `${editor.value.slice(0, insertionPoint)}${suffix}${editor.value.slice(insertionPoint)}`;
-    setSelection(insertionPoint + suffix.length);
+    const result = normalizeBlankLineAfterInsertion(editor.value, table.end);
+    replaceRange(result.from, result.to, result.insert, result.cursor);
     setText(editor.value, true, getActiveDoc().activePane);
     setStatus("Exited table");
     return true;
@@ -1706,13 +1996,21 @@ Code block
 
   function insertAtSelection(text) {
     const editor = getActiveTextarea();
+    if (editor?.insertText) {
+      editor.insertText(text);
+      return;
+    }
     const start = editor.selectionStart;
     replaceRange(start, editor.selectionEnd, text);
     setSelection(start + text.length);
   }
 
-  function replaceRange(start, end, text) {
+  function replaceRange(start, end, text, cursor) {
     const editor = getActiveTextarea();
+    if (editor?.replaceRange) {
+      editor.replaceRange(start, end, text, cursor);
+      return;
+    }
     editor.value = `${editor.value.slice(0, start)}${text}${editor.value.slice(end)}`;
     setText(editor.value, true, getActiveDoc().activePane);
   }
@@ -1732,6 +2030,7 @@ Code block
     event.preventDefault();
     const editor = getActiveTextarea();
     if (!editor) return;
+    editor.exitInlineFormatting?.("Tab");
     closeMenuPanel();
     closeContextMenu();
     contextMenu.innerHTML = "";
@@ -1899,7 +2198,11 @@ Code block
 
   function applyTableResult(result, message) {
     const editor = getActiveTextarea();
-    editor.value = result.value;
+    if (editor?.replaceRange) {
+      editor.replaceRange(0, editor.value.length, result.value, result.cursor);
+    } else {
+      editor.value = result.value;
+    }
     setSelection(result.cursor);
     setText(editor.value, true, getActiveDoc().activePane);
     editor.focus();
@@ -1909,6 +2212,10 @@ Code block
   function wrapCodeSelection(before, after) {
     const editor = getActiveTextarea();
     if (!editor) return;
+    if (editor.wrapInline) {
+      editor.wrapInline(before, after);
+      return;
+    }
     const start = editor.selectionStart;
     const end = editor.selectionEnd;
     const selected = editor.value.slice(start, end);
@@ -1922,6 +2229,10 @@ Code block
 
   function exitInlineFormatting(event) {
     const editor = getActiveTextarea();
+    if (editor?.exitInlineFormatting?.(event.key)) {
+      event.preventDefault();
+      return true;
+    }
     if (!editor || editor.selectionStart !== editor.selectionEnd) return false;
     const formats = [
       { before: "**", after: "**" },
@@ -2076,6 +2387,14 @@ Code block
   function applyLineCommand(command, stripSlash) {
     const editor = getActiveTextarea();
     if (!command || !editor) return;
+    const table = command.marker === "table" && window.MDBasicsTableEditing ? window.MDBasicsTableEditing.createDefaultTable() : null;
+    if (editor.applyLineCommand?.(command, { stripSlash, table })) {
+      slashSuppressed = false;
+      hideSlashMenu();
+      editor.focus();
+      if (command.marker === "table") setStatus("Inserted table");
+      return;
+    }
     const start = editor.selectionStart;
     const lineStart = editor.value.lastIndexOf("\n", start - 1) + 1;
     const lineEndIndex = editor.value.indexOf("\n", start);
@@ -2160,6 +2479,7 @@ Code block
   }
 
   function getTopVisibleCodeLine(textarea) {
+    if (textarea?.topVisibleLine) return textarea.topVisibleLine();
     const lineHeight = getTextareaLineHeight(textarea);
     return Math.max(1, Math.floor(textarea.scrollTop / lineHeight) + 1);
   }
@@ -2237,6 +2557,11 @@ Code block
   }
 
   function getTextareaCaretRect(textarea) {
+    if (textarea?.coordsAtPos) {
+      const cursor = textarea.selectionStart;
+      const rect = textarea.coordsAtPos(cursor) || textarea.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, bottom: rect.bottom || rect.top + 20 };
+    }
     const textareaRect = textarea.getBoundingClientRect();
     const style = window.getComputedStyle(textarea);
     const mirror = document.createElement("div");
@@ -2554,7 +2879,8 @@ Code block
     window.addEventListener("pointerdown", (event) => {
       if (!menuPanel.contains(event.target)) closeMenuPanel();
       if (!contextMenu.contains(event.target) && !contextFloatingMenus.some((menu) => menu.contains(event.target))) closeContextMenu();
-      if (!slashMenu.contains(event.target) && event.target !== getActiveTextarea()) hideSlashMenu();
+      const activeEditor = getActiveTextarea();
+      if (!slashMenu.contains(event.target) && !activeEditor?.contains?.(event.target)) hideSlashMenu();
     });
     window.addEventListener("keydown", handleGlobalKeydown);
     window.addEventListener("pointermove", handleActivityResize);
