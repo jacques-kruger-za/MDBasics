@@ -223,9 +223,10 @@ button.active {
   display: none;
   min-width: 190px;
   overscroll-behavior: contain;
+  z-index: 30;
 }
 
-.submenu-wrap.submenu-open > .submenu-panel {
+.submenu-panel.submenu-open {
   display: grid;
 }
 

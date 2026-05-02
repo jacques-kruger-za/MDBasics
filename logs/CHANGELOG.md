@@ -45,6 +45,7 @@
 - Fixed slash command menu boundary handling after filtering and keyboard navigation so long menus stay visible near the bottom of the editor.
 - Fixed context submenu boundary handling so the Tables submenu is clamped to the visible window and scrolls internally if needed.
 - Reworked context submenu positioning to stay anchored to the trigger row while choosing left/right and up/down from available viewport space.
+- Moved context submenus to body-level floating panels so viewport coordinates are not distorted by the filtered parent menu.
 
 ### Health Checks
 - Installed dependencies and upgraded Electron to 41.4.0 to clear npm audit advisories.

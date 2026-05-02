@@ -35,6 +35,8 @@
   let slashIndex = 0;
   let slashSuppressed = false;
   let slashSearch = "";
+  let contextFloatingMenus = [];
+  let submenuCloseTimer = null;
 
   const slashCommands = [
     { label: "Heading 1", marker: "# ", syntax: "#", shortcut: "Ctrl+Shift+1" },
@@ -686,6 +688,7 @@ Code block
 
   function closeContextMenu() {
     contextMenu.hidden = true;
+    closeFloatingSubmenus();
   }
 
   function addContextSeparator() {
@@ -719,18 +722,24 @@ Code block
     submenu.className = "menu-panel submenu-panel";
     items.forEach(([itemLabel, action]) => addContextButton(itemLabel, action, submenu));
     wrapper.appendChild(trigger);
-    wrapper.appendChild(submenu);
-    wrapper.addEventListener("pointerenter", () => openSubmenu(wrapper, submenu));
-    wrapper.addEventListener("pointerleave", () => closeSubmenu(wrapper, submenu));
-    wrapper.addEventListener("focusin", () => openSubmenu(wrapper, submenu));
+    document.body.appendChild(submenu);
+    contextFloatingMenus.push(submenu);
+
+    wrapper.addEventListener("pointerenter", () => openSubmenu(wrapper, trigger, submenu));
+    wrapper.addEventListener("pointerleave", () => scheduleSubmenuClose(wrapper, submenu));
+    submenu.addEventListener("pointerenter", cancelSubmenuClose);
+    submenu.addEventListener("pointerleave", () => scheduleSubmenuClose(wrapper, submenu));
+    wrapper.addEventListener("focusin", () => openSubmenu(wrapper, trigger, submenu));
     wrapper.addEventListener("focusout", (event) => {
-      if (!wrapper.contains(event.relatedTarget)) closeSubmenu(wrapper, submenu);
+      if (!wrapper.contains(event.relatedTarget) && !submenu.contains(event.relatedTarget)) scheduleSubmenuClose(wrapper, submenu);
     });
     contextMenu.appendChild(wrapper);
   }
 
-  function openSubmenu(wrapper, submenu) {
+  function openSubmenu(wrapper, trigger, submenu) {
+    cancelSubmenuClose();
     wrapper.classList.add("submenu-open");
+    submenu.classList.add("submenu-open");
     submenu.style.visibility = "hidden";
     submenu.style.display = "grid";
     submenu.style.position = "fixed";
@@ -741,7 +750,7 @@ Code block
     submenu.style.left = "0px";
     submenu.style.top = "0px";
 
-    const triggerRect = wrapper.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
     const submenuRect = submenu.getBoundingClientRect();
     const gap = 6;
     const edge = 8;
@@ -766,10 +775,27 @@ Code block
     submenu.style.visibility = "";
   }
 
+  function scheduleSubmenuClose(wrapper, submenu) {
+    cancelSubmenuClose();
+    submenuCloseTimer = setTimeout(() => closeSubmenu(wrapper, submenu), 120);
+  }
+
+  function cancelSubmenuClose() {
+    clearTimeout(submenuCloseTimer);
+    submenuCloseTimer = null;
+  }
+
   function closeSubmenu(wrapper, submenu) {
     wrapper.classList.remove("submenu-open");
+    submenu.classList.remove("submenu-open");
     submenu.style.display = "";
     submenu.style.visibility = "";
+  }
+
+  function closeFloatingSubmenus() {
+    cancelSubmenuClose();
+    contextFloatingMenus.forEach((submenu) => submenu.remove());
+    contextFloatingMenus = [];
   }
 
   function getTableContextItems() {
@@ -1166,7 +1192,7 @@ Code block
     });
     window.addEventListener("pointerdown", (event) => {
       if (!menuPanel.contains(event.target)) closeMenuPanel();
-      if (!contextMenu.contains(event.target)) closeContextMenu();
+      if (!contextMenu.contains(event.target) && !contextFloatingMenus.some((menu) => menu.contains(event.target))) closeContextMenu();
       if (!slashMenu.contains(event.target) && event.target !== codeEditor) hideSlashMenu();
     });
 
