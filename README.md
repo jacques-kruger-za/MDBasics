@@ -33,6 +33,14 @@ npm install
 npm start
 ```
 
+## Build Installer
+
+```powershell
+npm run dist
+```
+
+The Windows installer is written to `dist/`.
+
 ## Markdown Shortcuts
 
 Inline formatting:

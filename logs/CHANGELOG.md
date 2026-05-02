@@ -48,6 +48,7 @@
 - Moved context submenus to body-level floating panels so viewport coordinates are not distorted by the filtered parent menu.
 - Replaced the parked WYSIWYG module with a read-only display module and reactivated Rendered and Diff as MVP read-only views.
 - Fixed view switching by enforcing hidden panes at app CSS level so the code editor no longer overrides the hidden attribute.
+- Added Electron Builder packaging for a local Windows NSIS installer.
 
 ### Health Checks
 - Installed dependencies and upgraded Electron to 41.4.0 to clear npm audit advisories.
