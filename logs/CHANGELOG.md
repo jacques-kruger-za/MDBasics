@@ -1,3 +1,16 @@
+## v0.1.2 - 2026-05-02
+
+### Changes
+- Added a document toolbar below tabs for single/split layout, active pane selection, pane Code/Preview mode, pane sync, and Diff inspector controls.
+- Replaced the single editor surface with per-tab pane state so each document remembers layout, active pane, pane view, pane cursor, pane scroll, and sync lock.
+- Added editable dual Code panes backed by the same document text while preserving independent pane cursor and scroll state.
+- Moved Diff out of the main view modes into a global right inspector whose content follows the active tab.
+- Added block-anchored Markdown preview and source-line diff rows for MVP pane and inspector sync.
+
+### Health Checks
+- Ran syntax verification and npm audit.
+- Rebuilt the Windows installer as `MDBasics-0.1.2-Setup-x64.exe`.
+
 ## v0.1.1 - 2026-05-02
 
 ### Changes

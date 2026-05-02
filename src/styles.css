@@ -102,7 +102,8 @@ button.active {
 
 .topbar button,
 .menu-panel,
-.tabs-row button {
+.tabs-row button,
+.document-toolbar button {
   -webkit-app-region: no-drag;
 }
 
@@ -236,13 +237,14 @@ button.active {
 
 .workspace {
   display: grid;
-  grid-template-rows: 36px 1fr 28px;
+  grid-template-rows: 36px 34px 1fr 28px;
   height: calc(100vh - 40px);
   border-radius: 0;
   overflow: hidden;
 }
 
 .tabs-row,
+.document-toolbar,
 .statusbar {
   display: flex;
   align-items: center;
@@ -309,6 +311,56 @@ button.active {
   background: transparent;
 }
 
+.document-toolbar {
+  gap: 10px;
+  padding: 0 10px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+
+.toolbar-group[hidden] {
+  display: none;
+}
+
+.toolbar-group button,
+.icon-button {
+  border: 0;
+  display: grid;
+  min-width: 28px;
+  height: 26px;
+  place-items: center;
+  padding: 0 8px;
+  color: var(--muted);
+}
+
+.icon-button {
+  width: 28px;
+  padding: 0;
+}
+
+.icon-button svg,
+.toolbar-group svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.toolbar-group button.active,
+.icon-button.active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
 .view-toggle {
   border: 0;
   padding: 0;
@@ -345,6 +397,73 @@ button.active {
   background: transparent;
 }
 
+.workspace-surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.pane-area {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-area.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pane-area.split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.doc-pane {
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+}
+
+.doc-pane:last-child {
+  border-right: 0;
+}
+
+.doc-pane.active {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.pane-body {
+  height: 100%;
+  min-height: 0;
+}
+
+.right-inspector {
+  width: min(38vw, 460px);
+  min-width: 300px;
+  height: 100%;
+  border-left: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  overflow: hidden;
+}
+
+.inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#diffInspectorContent {
+  height: calc(100% - 34px);
+  overflow: auto;
+  padding: 12px;
+}
+
 .empty-state {
   display: grid;
   height: 100%;
@@ -371,9 +490,9 @@ button.active {
 }
 
 .code-editor-wrap,
-#codeEditor,
-#renderEditor,
-#diffEditor {
+.code-editor,
+.pane-preview,
+#diffInspectorContent {
   width: 100%;
   height: 100%;
   border: 0;
@@ -407,7 +526,7 @@ button.active {
   user-select: none;
 }
 
-#codeEditor {
+.code-editor {
   position: relative;
   z-index: 1;
   padding: 30px clamp(22px, 5vw, 72px);
@@ -437,19 +556,15 @@ button.active {
   display: none;
 }
 
-#codeEditor.no-wrap {
+.code-editor.no-wrap,
+.code-editor-wrap.no-wrap .code-editor {
   white-space: pre;
 }
 
-#renderEditor {
+.pane-preview {
   overflow: auto;
   padding: 30px clamp(22px, 5vw, 72px) 70px;
   line-height: 1.72;
-}
-
-#diffEditor {
-  overflow: auto;
-  padding: 22px clamp(16px, 4vw, 56px) 70px;
 }
 
 .diff-view {
@@ -567,16 +682,18 @@ button.active {
   color: var(--muted);
 }
 
-.markdown-body li:has(> input[type="checkbox"]),
-#renderEditor li:has(> input[type="checkbox"]) {
+.markdown-body li:has(> input[type="checkbox"]) {
   list-style: none;
   margin-left: -1.4em;
 }
 
-.markdown-body li > input[type="checkbox"],
-#renderEditor li > input[type="checkbox"] {
+.markdown-body li > input[type="checkbox"] {
   margin-right: 0.55em;
   transform: translateY(0.08em);
+}
+
+.markdown-block {
+  scroll-margin-top: 24px;
 }
 
 .statusbar {

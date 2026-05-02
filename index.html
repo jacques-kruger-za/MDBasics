@@ -16,17 +16,6 @@
           <button data-menu="view">View</button>
           <button data-menu="settings">Settings</button>
         </nav>
-        <div class="view-toggle title-toggle" role="group" aria-label="Editor mode">
-          <button id="codeModeButton" class="active" title="Code view" aria-label="Code view">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
-          </button>
-          <button id="renderModeButton" title="Rendered preview" aria-label="Rendered preview">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-          <button id="diffModeButton" title="Diff view" aria-label="Diff view">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h7M6 16h7M17 6v12M15 8h4M15 16h4"/></svg>
-          </button>
-        </div>
       </header>
       <div id="menuPanel" class="menu-panel" hidden></div>
       <div id="contextMenu" class="menu-panel context-menu" hidden></div>
@@ -37,19 +26,53 @@
           <div id="tabs" class="tabs" role="tablist"></div>
           <button id="newTabButton" class="new-tab" title="New document" aria-label="New document">+</button>
         </div>
+        <div id="documentToolbar" class="document-toolbar">
+          <div class="toolbar-group" role="group" aria-label="Pane layout">
+            <button id="singleLayoutButton" class="icon-button active" title="Single pane" aria-label="Single pane">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+            </button>
+            <button id="splitLayoutButton" class="icon-button" title="Split panes" aria-label="Split panes">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="7" height="14" rx="2"/><rect x="13" y="5" width="7" height="14" rx="2"/></svg>
+            </button>
+          </div>
+          <div id="paneSelector" class="toolbar-group" role="group" aria-label="Active pane">
+            <button id="primaryPaneButton" class="active" type="button">Left</button>
+            <button id="secondaryPaneButton" type="button">Right</button>
+          </div>
+          <div class="toolbar-group" role="group" aria-label="Pane view">
+            <button id="paneCodeButton" class="icon-button active" title="Code" aria-label="Code">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
+            </button>
+            <button id="panePreviewButton" class="icon-button" title="Preview" aria-label="Preview">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <button id="paneSyncButton" class="icon-button" title="Sync panes" aria-label="Sync panes">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"/><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"/></svg>
+          </button>
+          <button id="diffInspectorButton" class="icon-button" title="Diff inspector" aria-label="Diff inspector">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h7M6 16h7M17 6v12M15 8h4M15 16h4"/></svg>
+          </button>
+          <button id="diffFollowButton" class="icon-button" title="Diff follows pane" aria-label="Diff follows pane">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
 
         <main class="editor-shell">
           <section id="emptyState" class="empty-state" hidden>
             <div class="empty-icon">M</div>
             <button id="emptyOpenButton">Open Markdown File</button>
           </section>
-          <div id="codeEditorWrap" class="code-editor-wrap">
-            <pre id="lineNumbers" class="line-numbers" aria-hidden="true"></pre>
-            <textarea id="codeEditor" spellcheck="false" aria-label="Markdown code editor"></textarea>
-            <pre id="ghostText" class="ghost-text" aria-hidden="true"></pre>
+          <div id="workspaceSurface" class="workspace-surface">
+            <section id="paneArea" class="pane-area" aria-label="Document panes"></section>
+            <aside id="rightInspector" class="right-inspector" aria-label="Right inspector" hidden>
+              <div class="inspector-header">
+                <span>Diff</span>
+                <button id="closeInspectorButton" class="icon-button" title="Close inspector" aria-label="Close inspector">×</button>
+              </div>
+              <section id="diffInspectorContent" class="diff-view"></section>
+            </aside>
           </div>
-          <div id="renderEditor" class="markdown-body" aria-label="Rendered Markdown preview"></div>
-          <section id="diffEditor" class="diff-view" aria-label="Diff against saved version"></section>
         </main>
 
         <footer class="statusbar">

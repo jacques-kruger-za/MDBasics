@@ -1,32 +1,39 @@
 (function () {
-  const codeEditor = document.getElementById("codeEditor");
-  const codeEditorWrap = document.getElementById("codeEditorWrap");
-  const lineNumbers = document.getElementById("lineNumbers");
-  const ghostText = document.getElementById("ghostText");
-  const renderEditor = document.getElementById("renderEditor");
   const tabsEl = document.getElementById("tabs");
   const filePathEl = document.getElementById("filePath");
   const statusMessage = document.getElementById("statusMessage");
   const cursorPositionEl = document.getElementById("cursorPosition");
   const charCountEl = document.getElementById("charCount");
   const zoomLevelEl = document.getElementById("zoomLevel");
-  const codeModeButton = document.getElementById("codeModeButton");
-  const renderModeButton = document.getElementById("renderModeButton");
-  const diffModeButton = document.getElementById("diffModeButton");
-  const diffEditor = document.getElementById("diffEditor");
   const emptyState = document.getElementById("emptyState");
   const emptyOpenButton = document.getElementById("emptyOpenButton");
   const menuPanel = document.getElementById("menuPanel");
   const contextMenu = document.getElementById("contextMenu");
   const slashMenu = document.getElementById("slashMenu");
+  const documentToolbar = document.getElementById("documentToolbar");
+  const paneArea = document.getElementById("paneArea");
+  const rightInspector = document.getElementById("rightInspector");
+  const diffInspectorContent = document.getElementById("diffInspectorContent");
 
+  const singleLayoutButton = document.getElementById("singleLayoutButton");
+  const splitLayoutButton = document.getElementById("splitLayoutButton");
+  const paneSelector = document.getElementById("paneSelector");
+  const primaryPaneButton = document.getElementById("primaryPaneButton");
+  const secondaryPaneButton = document.getElementById("secondaryPaneButton");
+  const paneCodeButton = document.getElementById("paneCodeButton");
+  const panePreviewButton = document.getElementById("panePreviewButton");
+  const paneSyncButton = document.getElementById("paneSyncButton");
+  const diffInspectorButton = document.getElementById("diffInspectorButton");
+  const diffFollowButton = document.getElementById("diffFollowButton");
+  const closeInspectorButton = document.getElementById("closeInspectorButton");
+
+  const PANE_PRIMARY = "primary";
+  const PANE_SECONDARY = "secondary";
   const VIEW_CODE = "code";
-  const VIEW_RENDERED = "rendered";
-  const VIEW_DIFF = "diff";
+  const VIEW_PREVIEW = "preview";
 
   let activeId = null;
   let documents = [];
-  let activeView = VIEW_CODE;
   let applyingHistory = false;
   let lineWrap = true;
   let showLineNumbers = false;
@@ -39,20 +46,11 @@
   let slashSearch = "";
   let contextFloatingMenus = [];
   let submenuCloseTimer = null;
+  let inspectorOpen = false;
+  let diffFollowLocked = true;
+  let paneSyncing = false;
 
-  const slashCommands = [
-    { label: "Heading 1", marker: "# ", syntax: "#", shortcut: "Ctrl+Shift+1" },
-    { label: "Heading 2", marker: "## ", syntax: "##", shortcut: "Ctrl+Shift+2" },
-    { label: "Heading 3", marker: "### ", syntax: "###", shortcut: "Ctrl+Shift+3" },
-    { label: "Quote", marker: "> ", syntax: ">", shortcut: "Ctrl+Shift+4" },
-    { label: "Bullet", marker: "- ", syntax: "-", shortcut: "Ctrl+Shift+5" },
-    { label: "Numbered", marker: "numbered", syntax: "1.", shortcut: "Ctrl+Shift+6" },
-    { label: "Task", marker: "- [ ] ", syntax: "- [ ]", shortcut: "Ctrl+Shift+7" },
-    { label: "Line", marker: "---\n\n", syntax: "---", shortcut: "Ctrl+Shift+8", cursorOffset: 5 },
-    { label: "Code Block", marker: "```\n\n```", syntax: "```", shortcut: "Ctrl+Shift+9", cursorOffset: 4 },
-    { label: "Paragraph", marker: "paragraph", syntax: "¶", shortcut: "Ctrl+Shift+0" },
-    { label: "Table", marker: "table", syntax: "|", shortcut: "Ctrl+Shift+T" }
-  ];
+  const paneNodes = new Map();
   const defaultGhostText = `# Heading 1
 ## Heading 2
 ### Heading 3
@@ -75,18 +73,30 @@ Plain paragraph with **bold**, _italic_, <u>underline</u>, and \`inline code\`.
 Code block
 \`\`\``;
 
+  const slashCommands = [
+    { label: "Heading 1", marker: "# ", syntax: "#", shortcut: "Ctrl+Shift+1" },
+    { label: "Heading 2", marker: "## ", syntax: "##", shortcut: "Ctrl+Shift+2" },
+    { label: "Heading 3", marker: "### ", syntax: "###", shortcut: "Ctrl+Shift+3" },
+    { label: "Quote", marker: "> ", syntax: ">", shortcut: "Ctrl+Shift+4" },
+    { label: "Bullet", marker: "- ", syntax: "-", shortcut: "Ctrl+Shift+5" },
+    { label: "Numbered", marker: "numbered", syntax: "1.", shortcut: "Ctrl+Shift+6" },
+    { label: "Task", marker: "- [ ] ", syntax: "- [ ]", shortcut: "Ctrl+Shift+7" },
+    { label: "Line", marker: "---\n\n", syntax: "---", shortcut: "Ctrl+Shift+8", cursorOffset: 5 },
+    { label: "Code Block", marker: "```\n\n```", syntax: "```", shortcut: "Ctrl+Shift+9", cursorOffset: 4 },
+    { label: "Paragraph", marker: "paragraph", syntax: "¶", shortcut: "Ctrl+Shift+0" },
+    { label: "Table", marker: "table", syntax: "|", shortcut: "Ctrl+Shift+T" }
+  ];
+
   if (!window.mdb) {
     setStatus("App bridge failed to load. Restart MDBasics.");
     return;
   }
 
-  parkInactiveModules();
   bindEvents();
   createDocument({ text: "" });
 
-  function parkInactiveModules() {
-    renderEditor.setAttribute("contenteditable", "false");
-    diffEditor.setAttribute("contenteditable", "false");
+  function createPaneState(view = VIEW_CODE) {
+    return { view, cursor: 0, selectionEnd: 0, scrollTop: 0, sourceLine: 1 };
   }
 
   function createDocument({ title = "Untitled", filePath = null, text = "" } = {}) {
@@ -98,7 +108,14 @@ Code block
       savedText: text,
       undoStack: [],
       redoStack: [],
-      dirty: false
+      dirty: false,
+      layoutMode: "single",
+      activePane: PANE_PRIMARY,
+      paneSyncLocked: true,
+      panes: {
+        primary: createPaneState(VIEW_CODE),
+        secondary: createPaneState(VIEW_PREVIEW)
+      }
     };
     documents.push(doc);
     setActive(doc.id);
@@ -108,18 +125,40 @@ Code block
     return documents.find((doc) => doc.id === activeId);
   }
 
-  function setActive(id) {
-    activeId = id;
-    const doc = getActiveDoc();
-    if (!doc) return;
-    codeEditor.value = doc.text;
-    updateChrome();
+  function getVisiblePaneIds(doc = getActiveDoc()) {
+    if (!doc) return [];
+    return doc.layoutMode === "split" ? [PANE_PRIMARY, PANE_SECONDARY] : [doc.activePane];
   }
 
-  function updateChrome() {
+  function getActivePaneState() {
+    const doc = getActiveDoc();
+    return doc?.panes[doc.activePane];
+  }
+
+  function getActivePaneNode() {
+    return paneNodes.get(getActiveDoc()?.activePane);
+  }
+
+  function getActiveTextarea() {
+    const node = getActivePaneNode();
+    return node?.textarea || null;
+  }
+
+  function setActive(id) {
+    activeId = id;
+    renderApp();
+  }
+
+  function renderApp() {
+    renderTabs();
+    renderWorkspace();
+    updateToolbar();
+    updateStatus();
+  }
+
+  function renderTabs() {
     const doc = getActiveDoc();
     tabsEl.innerHTML = "";
-
     documents.forEach((item) => {
       const tab = document.createElement("div");
       tab.className = `tab ${item.id === activeId ? "active" : ""}`;
@@ -137,77 +176,294 @@ Code block
     });
 
     filePathEl.textContent = doc?.filePath || doc?.title || "No document";
-    charCountEl.textContent = `${doc?.text.length || 0} chars`;
     emptyState.hidden = Boolean(doc);
-    codeEditorWrap.hidden = !doc || activeView !== VIEW_CODE;
-    renderEditor.hidden = !doc || activeView !== VIEW_RENDERED;
-    diffEditor.hidden = !doc || activeView !== VIEW_DIFF;
-    codeModeButton.classList.toggle("active", activeView === VIEW_CODE && Boolean(doc));
-    renderModeButton.classList.toggle("active", activeView === VIEW_RENDERED && Boolean(doc));
-    diffModeButton.classList.toggle("active", activeView === VIEW_DIFF && Boolean(doc));
-    [codeModeButton, renderModeButton, diffModeButton].forEach((button) => {
-      button.disabled = !doc;
-    });
-    updateReadonlyViews();
-    updateGhostText();
-    updateCursorStatus();
-    updateLineNumbers();
+    documentToolbar.hidden = !doc;
   }
 
-  function setView(view) {
-    activeView = view;
-    updateChrome();
-    setStatus({
-      [VIEW_CODE]: "Code mode active",
-      [VIEW_RENDERED]: "Rendered preview active",
-      [VIEW_DIFF]: "Diff view active"
-    }[view]);
-    if (view === VIEW_CODE) codeEditor.focus();
-  }
-
-  function updateReadonlyViews() {
+  function renderWorkspace() {
     const doc = getActiveDoc();
-    if (!doc) return;
-    if (activeView === VIEW_RENDERED) {
-      window.MDBasicsDisplay.renderMarkdown(renderEditor, window.mdb.markdownToHtml, doc.text);
-    }
-    if (activeView === VIEW_DIFF) {
-      diffEditor.innerHTML = window.MDBasicsDiff.buildLineDiff(doc.savedText || "", doc.text || "", escapeHtml);
-    }
-  }
-
-  function updateGhostText() {
-    const doc = getActiveDoc();
-    const showGhost = Boolean(doc) && doc.text.length === 0 && codeEditor.value.length === 0;
-    ghostText.textContent = showGhost ? defaultGhostText : "";
-    ghostText.hidden = !showGhost;
-  }
-
-  function setStatus(message) {
-    statusMessage.textContent = message;
-  }
-
-  function closeDocument(id) {
-    if (!id || documents.length === 0) return;
-
-    if (documents.length === 1) {
-      documents = [];
-      activeId = null;
-      codeEditor.value = "";
-      updateChrome();
+    paneNodes.clear();
+    paneArea.innerHTML = "";
+    paneArea.className = `pane-area ${doc?.layoutMode === "split" ? "split" : "single"}`;
+    if (!doc) {
+      rightInspector.hidden = true;
       return;
     }
 
-    const index = documents.findIndex((doc) => doc.id === id);
-    documents = documents.filter((doc) => doc.id !== id);
-    if (activeId === id) {
-      setActive(documents[Math.max(0, index - 1)].id);
+    getVisiblePaneIds(doc).forEach((paneId) => {
+      const pane = buildPane(doc, paneId);
+      paneArea.appendChild(pane.element);
+      paneNodes.set(paneId, pane);
+    });
+
+    updateAllPanes({ preserveFocus: false });
+    renderInspector();
+  }
+
+  function buildPane(doc, paneId) {
+    const paneState = doc.panes[paneId];
+    const element = document.createElement("section");
+    element.className = `doc-pane ${doc.activePane === paneId ? "active" : ""}`;
+    element.dataset.pane = paneId;
+
+    const body = document.createElement("div");
+    body.className = "pane-body";
+    element.appendChild(body);
+
+    const node = { element, body, paneId, textarea: null, lineNumbers: null, ghostText: null, preview: null };
+
+    element.addEventListener("pointerdown", () => {
+      setActivePane(paneId, false);
+    });
+
+    if (paneState.view === VIEW_CODE) {
+      const wrap = document.createElement("div");
+      wrap.className = `code-editor-wrap pane-code ${showLineNumbers ? "show-lines" : ""}`;
+      wrap.style.setProperty("--editor-font-size", `${15 * (editorZoom / 100)}px`);
+      if (!lineWrap) wrap.classList.add("no-wrap");
+
+      const lineNumbers = document.createElement("pre");
+      lineNumbers.className = "line-numbers";
+      lineNumbers.setAttribute("aria-hidden", "true");
+      const textarea = document.createElement("textarea");
+      textarea.className = "code-editor";
+      textarea.spellcheck = false;
+      textarea.setAttribute("aria-label", `${paneId === PANE_PRIMARY ? "Left" : "Right"} Markdown code editor`);
+      const ghostText = document.createElement("pre");
+      ghostText.className = "ghost-text";
+      ghostText.setAttribute("aria-hidden", "true");
+
+      wrap.appendChild(lineNumbers);
+      wrap.appendChild(textarea);
+      wrap.appendChild(ghostText);
+      body.appendChild(wrap);
+
+      node.textarea = textarea;
+      node.lineNumbers = lineNumbers;
+      node.ghostText = ghostText;
+      bindTextarea(textarea, paneId);
     } else {
-      updateChrome();
+      const preview = document.createElement("div");
+      preview.className = "markdown-body pane-preview";
+      preview.setAttribute("contenteditable", "false");
+      body.appendChild(preview);
+      node.preview = preview;
+      bindPreview(preview, paneId);
+    }
+
+    return node;
+  }
+
+  function bindTextarea(textarea, paneId) {
+    textarea.addEventListener("focus", () => setActivePane(paneId, true));
+    textarea.addEventListener("input", () => handlePaneInput(paneId, textarea));
+    textarea.addEventListener("click", () => handlePaneCursor(paneId, textarea));
+    textarea.addEventListener("select", () => handlePaneCursor(paneId, textarea));
+    textarea.addEventListener("keyup", (event) => {
+      handlePaneCursor(paneId, textarea);
+      maybeShowSlashMenu(event);
+    });
+    textarea.addEventListener("scroll", () => handlePaneScroll(paneId, textarea));
+    textarea.addEventListener("wheel", (event) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      setEditorZoom(editorZoom + (event.deltaY < 0 ? 10 : -10));
+    }, { passive: false });
+    textarea.addEventListener("contextmenu", showContextMenu);
+    textarea.addEventListener("keydown", handleCodeKeydown);
+  }
+
+  function bindPreview(preview, paneId) {
+    preview.addEventListener("pointerdown", () => setActivePane(paneId, true));
+    preview.addEventListener("scroll", () => handlePreviewScroll(paneId, preview));
+    preview.addEventListener("click", (event) => {
+      const block = event.target.closest("[data-source-line]");
+      if (!block) return;
+      const doc = getActiveDoc();
+      doc.panes[paneId].sourceLine = Number(block.dataset.sourceLine || 1);
+      syncOtherPanesFrom(paneId);
+      syncInspectorFromPane(paneId);
+    });
+  }
+
+  function updateAllPanes({ preserveFocus = true } = {}) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    const focusedPaneId = preserveFocus ? doc.activePane : null;
+
+    paneNodes.forEach((node, paneId) => {
+      const state = doc.panes[paneId];
+      if (state.view === VIEW_CODE) {
+        updateCodePane(node, state, doc);
+      } else {
+        updatePreviewPane(node, state, doc);
+      }
+    });
+
+    if (focusedPaneId) {
+      const node = paneNodes.get(focusedPaneId);
+      if (node?.textarea && document.activeElement === node.textarea) node.textarea.focus();
+    }
+    renderInspector();
+    updateStatus();
+  }
+
+  function updateCodePane(node, state, doc) {
+    if (node.textarea.value !== doc.text) node.textarea.value = doc.text;
+    const cursor = Math.min(state.cursor, doc.text.length);
+    const selectionEnd = Math.min(state.selectionEnd ?? cursor, doc.text.length);
+    if (document.activeElement !== node.textarea) {
+      node.textarea.selectionStart = cursor;
+      node.textarea.selectionEnd = selectionEnd;
+    }
+    node.textarea.classList.toggle("no-wrap", !lineWrap);
+    node.textarea.style.setProperty("--editor-font-size", `${15 * (editorZoom / 100)}px`);
+    node.textarea.scrollTop = state.scrollTop || 0;
+    if (node.lineNumbers) {
+      node.lineNumbers.textContent = showLineNumbers
+        ? Array.from({ length: Math.max(1, doc.text.split(/\r?\n/).length) }, (_item, index) => String(index + 1)).join("\n")
+        : "";
+      node.lineNumbers.scrollTop = node.textarea.scrollTop;
+    }
+    if (node.ghostText) {
+      const showGhost = doc.text.length === 0;
+      node.ghostText.textContent = showGhost ? defaultGhostText : "";
+      node.ghostText.hidden = !showGhost;
     }
   }
 
-  function setText(text, trackHistory = true) {
+  function updatePreviewPane(node, state, doc) {
+    window.MDBasicsDisplay.renderAnchoredMarkdown(node.preview, window.mdb.markdownToHtml, doc.text);
+    scrollPreviewToLine(node.preview, state.sourceLine || 1);
+  }
+
+  function setActivePane(paneId, focusPane = true) {
+    const doc = getActiveDoc();
+    if (!doc || doc.activePane === paneId) return;
+    doc.activePane = paneId;
+    paneNodes.forEach((node, id) => node.element.classList.toggle("active", id === paneId));
+    updateToolbar();
+    updateStatus();
+    if (focusPane) paneNodes.get(paneId)?.textarea?.focus();
+  }
+
+  function setLayoutMode(mode) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    doc.layoutMode = mode;
+    if (mode === "single" && !doc.panes[doc.activePane]) doc.activePane = PANE_PRIMARY;
+    renderApp();
+    setStatus(mode === "split" ? "Split panes active" : "Single pane active");
+  }
+
+  function setActivePaneView(view) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    doc.panes[doc.activePane].view = view;
+    renderApp();
+    setStatus(view === VIEW_CODE ? "Pane set to Code" : "Pane set to Preview");
+  }
+
+  function toggleInspector() {
+    inspectorOpen = !inspectorOpen;
+    renderInspector();
+    updateToolbar();
+    setStatus(inspectorOpen ? "Diff inspector open" : "Diff inspector closed");
+  }
+
+  function renderInspector() {
+    const doc = getActiveDoc();
+    rightInspector.hidden = !doc || !inspectorOpen;
+    if (!doc || !inspectorOpen) return;
+    diffInspectorContent.innerHTML = window.MDBasicsDiff.buildLineDiff(doc.savedText || "", doc.text || "", escapeHtml);
+    if (diffFollowLocked) syncInspectorFromPane(doc.activePane);
+  }
+
+  function updateToolbar() {
+    const doc = getActiveDoc();
+    const disabled = !doc;
+    [singleLayoutButton, splitLayoutButton, primaryPaneButton, secondaryPaneButton, paneCodeButton,
+      panePreviewButton, paneSyncButton, diffInspectorButton, diffFollowButton].forEach((button) => {
+      button.disabled = disabled;
+    });
+    if (!doc) return;
+    singleLayoutButton.classList.toggle("active", doc.layoutMode === "single");
+    splitLayoutButton.classList.toggle("active", doc.layoutMode === "split");
+    paneSelector.hidden = doc.layoutMode !== "split";
+    primaryPaneButton.classList.toggle("active", doc.activePane === PANE_PRIMARY);
+    secondaryPaneButton.classList.toggle("active", doc.activePane === PANE_SECONDARY);
+    paneCodeButton.classList.toggle("active", getActivePaneState()?.view === VIEW_CODE);
+    panePreviewButton.classList.toggle("active", getActivePaneState()?.view === VIEW_PREVIEW);
+    paneSyncButton.classList.toggle("active", doc.paneSyncLocked);
+    diffInspectorButton.classList.toggle("active", inspectorOpen);
+    diffFollowButton.classList.toggle("active", diffFollowLocked);
+  }
+
+  function updateStatus() {
+    const doc = getActiveDoc();
+    charCountEl.textContent = `${doc?.text.length || 0} chars`;
+    zoomLevelEl.textContent = `${editorZoom}%`;
+    if (!doc) {
+      cursorPositionEl.textContent = "Ln 1, Col 1";
+      return;
+    }
+    const pane = getActivePaneState();
+    const cursor = Math.min(pane?.cursor || 0, doc.text.length);
+    const before = doc.text.slice(0, cursor);
+    const line = before.split(/\r?\n/).length;
+    const lastBreak = Math.max(before.lastIndexOf("\n"), before.lastIndexOf("\r"));
+    const col = cursor - lastBreak;
+    cursorPositionEl.textContent = `Ln ${line}, Col ${col}`;
+  }
+
+  function handlePaneInput(paneId, textarea) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    setActivePane(paneId, false);
+    const pane = doc.panes[paneId];
+    pane.cursor = textarea.selectionStart;
+    pane.selectionEnd = textarea.selectionEnd;
+    pane.scrollTop = textarea.scrollTop;
+    pane.sourceLine = getLineForPosition(textarea.value, textarea.selectionStart);
+    setText(textarea.value, true, paneId);
+    syncOtherPanesFrom(paneId);
+    syncInspectorFromPane(paneId);
+  }
+
+  function handlePaneCursor(paneId, textarea) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    setActivePane(paneId, false);
+    const pane = doc.panes[paneId];
+    pane.cursor = textarea.selectionStart;
+    pane.selectionEnd = textarea.selectionEnd;
+    pane.sourceLine = getLineForPosition(textarea.value, textarea.selectionStart);
+    updateStatus();
+    syncOtherPanesFrom(paneId);
+    syncInspectorFromPane(paneId);
+  }
+
+  function handlePaneScroll(paneId, textarea) {
+    const doc = getActiveDoc();
+    if (!doc || paneSyncing) return;
+    const pane = doc.panes[paneId];
+    pane.scrollTop = textarea.scrollTop;
+    pane.sourceLine = estimateLineFromScroll(textarea);
+    paneNodes.get(paneId).lineNumbers.scrollTop = textarea.scrollTop;
+    syncOtherPanesFrom(paneId);
+    syncInspectorFromPane(paneId);
+  }
+
+  function handlePreviewScroll(paneId, preview) {
+    const doc = getActiveDoc();
+    if (!doc || paneSyncing) return;
+    const pane = doc.panes[paneId];
+    pane.sourceLine = getFirstVisibleSourceLine(preview);
+    syncOtherPanesFrom(paneId);
+    syncInspectorFromPane(paneId);
+  }
+
+  function setText(text, trackHistory = true, sourcePaneId = null) {
     const doc = getActiveDoc();
     if (!doc || doc.text === text) return;
     if (trackHistory && !applyingHistory) {
@@ -217,7 +473,37 @@ Code block
     }
     doc.text = text;
     doc.dirty = true;
-    updateChrome();
+    updateAfterTextChange(sourcePaneId);
+  }
+
+  function updateAfterTextChange(sourcePaneId) {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    renderTabs();
+    paneNodes.forEach((node, paneId) => {
+      if (paneId === sourcePaneId && node.textarea) {
+        updateCodePaneChrome(node, doc);
+        return;
+      }
+      const state = doc.panes[paneId];
+      if (state.view === VIEW_CODE) updateCodePane(node, state, doc);
+      if (state.view === VIEW_PREVIEW) updatePreviewPane(node, state, doc);
+    });
+    renderInspector();
+    updateStatus();
+  }
+
+  function updateCodePaneChrome(node, doc) {
+    if (node.lineNumbers) {
+      node.lineNumbers.textContent = showLineNumbers
+        ? Array.from({ length: Math.max(1, doc.text.split(/\r?\n/).length) }, (_item, index) => String(index + 1)).join("\n")
+        : "";
+      node.lineNumbers.scrollTop = node.textarea.scrollTop;
+    }
+    if (node.ghostText) {
+      node.ghostText.textContent = doc.text.length === 0 ? defaultGhostText : "";
+      node.ghostText.hidden = doc.text.length !== 0;
+    }
   }
 
   function undo() {
@@ -225,8 +511,10 @@ Code block
     if (!doc || doc.undoStack.length === 0) return;
     doc.redoStack.push(doc.text);
     applyingHistory = true;
-    applyText(doc.undoStack.pop());
+    doc.text = doc.undoStack.pop();
+    doc.dirty = true;
     applyingHistory = false;
+    updateAfterTextChange();
   }
 
   function redo() {
@@ -234,17 +522,10 @@ Code block
     if (!doc || doc.redoStack.length === 0) return;
     doc.undoStack.push(doc.text);
     applyingHistory = true;
-    applyText(doc.redoStack.pop());
-    applyingHistory = false;
-  }
-
-  function applyText(text) {
-    const doc = getActiveDoc();
-    if (!doc) return;
-    doc.text = text;
+    doc.text = doc.redoStack.pop();
     doc.dirty = true;
-    codeEditor.value = text;
-    updateChrome();
+    applyingHistory = false;
+    updateAfterTextChange();
   }
 
   async function openFiles() {
@@ -284,7 +565,7 @@ Code block
     const doc = getActiveDoc();
     doc.savedText = file.text;
     doc.dirty = false;
-    updateChrome();
+    renderApp();
   }
 
   async function saveActive(saveAs = false) {
@@ -305,11 +586,29 @@ Code block
       doc.title = saved.filePath.split(/[\\/]/).pop();
       doc.savedText = doc.text;
       doc.dirty = false;
-      updateChrome();
+      renderApp();
       setStatus("Saved");
     } catch (error) {
       console.error(error);
       setStatus(`Save failed: ${error.message || "Unknown error"}`);
+    }
+  }
+
+  function closeDocument(id) {
+    if (!id || documents.length === 0) return;
+    if (documents.length === 1) {
+      documents = [];
+      activeId = null;
+      paneArea.innerHTML = "";
+      renderApp();
+      return;
+    }
+    const index = documents.findIndex((doc) => doc.id === id);
+    documents = documents.filter((doc) => doc.id !== id);
+    if (activeId === id) {
+      setActive(documents[Math.max(0, index - 1)].id);
+    } else {
+      renderApp();
     }
   }
 
@@ -407,9 +706,11 @@ Code block
         ["Underline", () => wrapCodeSelection("<u>", "</u>")]
       ],
       view: [
-        ["Code", () => setView(VIEW_CODE)],
-        ["Rendered", () => setView(VIEW_RENDERED)],
-        ["Diff", () => setView(VIEW_DIFF)]
+        ["Single Pane", () => setLayoutMode("single")],
+        ["Split Panes", () => setLayoutMode("split")],
+        ["Pane Code", () => setActivePaneView(VIEW_CODE)],
+        ["Pane Preview", () => setActivePaneView(VIEW_PREVIEW)],
+        ["Toggle Diff Inspector", toggleInspector]
       ],
       settings: [
         [document.body.classList.contains("light") ? "Dark Mode" : "Light Mode", toggleTheme],
@@ -462,42 +763,18 @@ Code block
   function toggleLineWrap() {
     closeMenuPanel();
     lineWrap = !lineWrap;
-    codeEditor.classList.toggle("no-wrap", !lineWrap);
-    updateLineNumbers();
+    updateAllPanes();
   }
 
   function toggleLineNumbers() {
     closeMenuPanel();
     showLineNumbers = !showLineNumbers;
-    codeEditorWrap.classList.toggle("show-lines", showLineNumbers);
-    updateLineNumbers();
-  }
-
-  function updateCursorStatus() {
-    const value = codeEditor.value;
-    const cursor = codeEditor.selectionStart || 0;
-    const before = value.slice(0, cursor);
-    const line = before.split(/\r?\n/).length;
-    const lastBreak = Math.max(before.lastIndexOf("\n"), before.lastIndexOf("\r"));
-    const col = cursor - lastBreak;
-    cursorPositionEl.textContent = `Ln ${line}, Col ${col}`;
-  }
-
-  function updateLineNumbers() {
-    if (!showLineNumbers) {
-      lineNumbers.textContent = "";
-      return;
-    }
-    const count = Math.max(1, codeEditor.value.split(/\r?\n/).length);
-    lineNumbers.textContent = Array.from({ length: count }, (_item, index) => String(index + 1)).join("\n");
-    lineNumbers.scrollTop = codeEditor.scrollTop;
+    updateAllPanes();
   }
 
   function setEditorZoom(nextZoom) {
     editorZoom = Math.min(180, Math.max(70, nextZoom));
-    codeEditorWrap.style.setProperty("--editor-font-size", `${15 * (editorZoom / 100)}px`);
-    zoomLevelEl.textContent = `${editorZoom}%`;
-    updateLineNumbers();
+    updateAllPanes();
   }
 
   function handleCodeKeydown(event) {
@@ -546,12 +823,23 @@ Code block
     return slashCommands[index];
   }
 
+  function getCurrentLineInfo() {
+    const editor = getActiveTextarea();
+    const value = editor.value;
+    const cursor = editor.selectionStart;
+    const start = value.lastIndexOf("\n", cursor - 1) + 1;
+    const nextBreak = value.indexOf("\n", cursor);
+    const end = nextBreak === -1 ? value.length : nextBreak;
+    return { start, end, line: value.slice(start, end), cursor };
+  }
+
   function handleMarkdownEnter(event) {
+    const editor = getActiveTextarea();
     const info = getCurrentLineInfo();
     const line = info.line;
     const trimmed = line.trim();
 
-    if (isInsideCodeFence(codeEditor.value, info.start)) {
+    if (isInsideCodeFence(editor.value, info.start)) {
       event.preventDefault();
       insertAtSelection("\n");
       return true;
@@ -614,15 +902,6 @@ Code block
     return false;
   }
 
-  function getCurrentLineInfo() {
-    const value = codeEditor.value;
-    const cursor = codeEditor.selectionStart;
-    const start = value.lastIndexOf("\n", cursor - 1) + 1;
-    const nextBreak = value.indexOf("\n", cursor);
-    const end = nextBreak === -1 ? value.length : nextBreak;
-    return { start, end, line: value.slice(start, end), cursor };
-  }
-
   function isInsideCodeFence(value, position) {
     const before = value.slice(0, position).split(/\r?\n/);
     let open = false;
@@ -638,12 +917,9 @@ Code block
   }
 
   function handleTableTab(event) {
-    if (!window.MDBasicsTableEditing) return false;
-    const result = window.MDBasicsTableEditing.moveCell(
-      codeEditor.value,
-      codeEditor.selectionStart,
-      event.shiftKey ? -1 : 1
-    );
+    const editor = getActiveTextarea();
+    if (!window.MDBasicsTableEditing || !editor) return false;
+    const result = window.MDBasicsTableEditing.moveCell(editor.value, editor.selectionStart, event.shiftKey ? -1 : 1);
     if (!result) return false;
     event.preventDefault();
     applyTableResult(result, "Table cell");
@@ -651,8 +927,9 @@ Code block
   }
 
   function handleTableEnter(event) {
-    if (!window.MDBasicsTableEditing) return false;
-    const result = window.MDBasicsTableEditing.insertRow(codeEditor.value, codeEditor.selectionStart, "below");
+    const editor = getActiveTextarea();
+    if (!window.MDBasicsTableEditing || !editor) return false;
+    const result = window.MDBasicsTableEditing.insertRow(editor.value, editor.selectionStart, "below");
     if (!result) return false;
     event.preventDefault();
     applyTableResult(result, "Inserted table row");
@@ -660,38 +937,48 @@ Code block
   }
 
   function exitTable(event) {
-    if (!window.MDBasicsTableEditing) return false;
-    const table = window.MDBasicsTableEditing.analyze(codeEditor.value, codeEditor.selectionStart);
+    const editor = getActiveTextarea();
+    if (!window.MDBasicsTableEditing || !editor) return false;
+    const table = window.MDBasicsTableEditing.analyze(editor.value, editor.selectionStart);
     if (!table) return false;
     event.preventDefault();
     const insertionPoint = table.end;
-    const suffix = codeEditor.value[insertionPoint] === "\n" ? "\n" : "\n\n";
-    codeEditor.value = `${codeEditor.value.slice(0, insertionPoint)}${suffix}${codeEditor.value.slice(insertionPoint)}`;
+    const suffix = editor.value[insertionPoint] === "\n" ? "\n" : "\n\n";
+    editor.value = `${editor.value.slice(0, insertionPoint)}${suffix}${editor.value.slice(insertionPoint)}`;
     setSelection(insertionPoint + suffix.length);
-    setText(codeEditor.value);
+    setText(editor.value, true, getActiveDoc().activePane);
     setStatus("Exited table");
     return true;
   }
 
   function insertAtSelection(text) {
-    const start = codeEditor.selectionStart;
-    replaceRange(start, codeEditor.selectionEnd, text);
+    const editor = getActiveTextarea();
+    const start = editor.selectionStart;
+    replaceRange(start, editor.selectionEnd, text);
     setSelection(start + text.length);
   }
 
   function replaceRange(start, end, text) {
-    const value = codeEditor.value;
-    codeEditor.value = `${value.slice(0, start)}${text}${value.slice(end)}`;
-    setText(codeEditor.value);
+    const editor = getActiveTextarea();
+    editor.value = `${editor.value.slice(0, start)}${text}${editor.value.slice(end)}`;
+    setText(editor.value, true, getActiveDoc().activePane);
   }
 
   function setSelection(position) {
-    codeEditor.selectionStart = position;
-    codeEditor.selectionEnd = position;
+    const editor = getActiveTextarea();
+    if (!editor) return;
+    editor.selectionStart = position;
+    editor.selectionEnd = position;
+    const pane = getActivePaneState();
+    pane.cursor = position;
+    pane.selectionEnd = position;
+    pane.sourceLine = getLineForPosition(editor.value, position);
   }
 
   function showContextMenu(event) {
     event.preventDefault();
+    const editor = getActiveTextarea();
+    if (!editor) return;
     closeMenuPanel();
     closeContextMenu();
     contextMenu.innerHTML = "";
@@ -711,11 +998,9 @@ Code block
       addContextSubmenu("Tables", tableItems);
     }
 
-    contextMenu.classList.remove("submenu-left");
     contextMenu.hidden = false;
     const rect = contextMenu.getBoundingClientRect();
-    const left = clamp(event.clientX, 8, window.innerWidth - rect.width - 8);
-    contextMenu.style.left = `${left}px`;
+    contextMenu.style.left = `${clamp(event.clientX, 8, window.innerWidth - rect.width - 8)}px`;
     contextMenu.style.top = `${clamp(event.clientY, 8, window.innerHeight - rect.height - 8)}px`;
   }
 
@@ -757,15 +1042,10 @@ Code block
     wrapper.appendChild(trigger);
     document.body.appendChild(submenu);
     contextFloatingMenus.push(submenu);
-
     wrapper.addEventListener("pointerenter", () => openSubmenu(wrapper, trigger, submenu));
     wrapper.addEventListener("pointerleave", () => scheduleSubmenuClose(wrapper, submenu));
     submenu.addEventListener("pointerenter", cancelSubmenuClose);
     submenu.addEventListener("pointerleave", () => scheduleSubmenuClose(wrapper, submenu));
-    wrapper.addEventListener("focusin", () => openSubmenu(wrapper, trigger, submenu));
-    wrapper.addEventListener("focusout", (event) => {
-      if (!wrapper.contains(event.relatedTarget) && !submenu.contains(event.relatedTarget)) scheduleSubmenuClose(wrapper, submenu);
-    });
     contextMenu.appendChild(wrapper);
   }
 
@@ -775,11 +1055,6 @@ Code block
     submenu.classList.add("submenu-open");
     submenu.style.visibility = "hidden";
     submenu.style.display = "grid";
-    submenu.style.position = "fixed";
-    submenu.style.right = "auto";
-    submenu.style.bottom = "auto";
-    submenu.style.maxHeight = "none";
-    submenu.style.overflowY = "";
     submenu.style.left = "0px";
     submenu.style.top = "0px";
 
@@ -822,7 +1097,6 @@ Code block
     wrapper.classList.remove("submenu-open");
     submenu.classList.remove("submenu-open");
     submenu.style.display = "";
-    submenu.style.visibility = "";
   }
 
   function closeFloatingSubmenus() {
@@ -832,7 +1106,8 @@ Code block
   }
 
   function getTableContextItems() {
-    if (!window.MDBasicsTableEditing?.analyze(codeEditor.value, codeEditor.selectionStart)) return [];
+    const editor = getActiveTextarea();
+    if (!editor || !window.MDBasicsTableEditing?.analyze(editor.value, editor.selectionStart)) return [];
     return [
       ["Format Table", () => runTableCommand("format")],
       ["Insert Row Above", () => runTableCommand("insertRow", "above")],
@@ -848,9 +1123,10 @@ Code block
   }
 
   function runTableCommand(commandName, argument) {
+    const editor = getActiveTextarea();
     const table = window.MDBasicsTableEditing;
-    if (!table) return;
-    const result = table[commandName](codeEditor.value, codeEditor.selectionStart, argument);
+    if (!editor || !table) return;
+    const result = table[commandName](editor.value, editor.selectionStart, argument);
     if (!result) {
       setStatus("No table action available");
       return;
@@ -859,99 +1135,100 @@ Code block
   }
 
   function applyTableResult(result, message) {
-    codeEditor.value = result.value;
+    const editor = getActiveTextarea();
+    editor.value = result.value;
     setSelection(result.cursor);
-    setText(codeEditor.value);
-    codeEditor.focus();
+    setText(editor.value, true, getActiveDoc().activePane);
+    editor.focus();
     setStatus(message);
   }
 
   function wrapCodeSelection(before, after) {
-    const start = codeEditor.selectionStart;
-    const end = codeEditor.selectionEnd;
-    const value = codeEditor.value;
-    const selected = value.slice(start, end);
+    const editor = getActiveTextarea();
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const selected = editor.value.slice(start, end);
     const replacement = `${before}${selected}${after}`;
-    codeEditor.value = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
-    codeEditor.selectionStart = start + before.length;
-    codeEditor.selectionEnd = start + before.length + selected.length;
-    setText(codeEditor.value);
-    codeEditor.focus();
+    editor.value = `${editor.value.slice(0, start)}${replacement}${editor.value.slice(end)}`;
+    editor.selectionStart = start + before.length;
+    editor.selectionEnd = start + before.length + selected.length;
+    setText(editor.value, true, getActiveDoc().activePane);
+    editor.focus();
   }
 
   function exitInlineFormatting(event) {
-    if (codeEditor.selectionStart !== codeEditor.selectionEnd) return false;
+    const editor = getActiveTextarea();
+    if (!editor || editor.selectionStart !== editor.selectionEnd) return false;
     const formats = [
       { before: "**", after: "**" },
       { before: "_", after: "_" },
       { before: "<u>", after: "</u>" },
       { before: "`", after: "`" }
     ];
-    const cursor = codeEditor.selectionStart;
-    const value = codeEditor.value;
-    const format = formats.find((item) => value.startsWith(item.after, cursor));
+    const cursor = editor.selectionStart;
+    const format = formats.find((item) => editor.value.startsWith(item.after, cursor));
     if (!format) return false;
 
     event.preventDefault();
     const separator = event.key === "Enter" ? "\n" : " ";
     const beforeStart = cursor - format.before.length;
-    const isEmptyWrapper = beforeStart >= 0 && value.slice(beforeStart, cursor) === format.before;
+    const isEmptyWrapper = beforeStart >= 0 && editor.value.slice(beforeStart, cursor) === format.before;
 
     if (isEmptyWrapper) {
-      codeEditor.value = `${value.slice(0, beforeStart)}${separator}${value.slice(cursor + format.after.length)}`;
+      editor.value = `${editor.value.slice(0, beforeStart)}${separator}${editor.value.slice(cursor + format.after.length)}`;
       setSelection(beforeStart + separator.length);
     } else {
-      codeEditor.value = `${value.slice(0, cursor + format.after.length)}${separator}${value.slice(cursor + format.after.length)}`;
+      editor.value = `${editor.value.slice(0, cursor + format.after.length)}${separator}${editor.value.slice(cursor + format.after.length)}`;
       setSelection(cursor + format.after.length + separator.length);
     }
-    setText(codeEditor.value);
+    setText(editor.value, true, getActiveDoc().activePane);
     return true;
   }
 
   function prefixCurrentLine(prefix) {
-    const value = codeEditor.value;
-    const lineStart = value.lastIndexOf("\n", codeEditor.selectionStart - 1) + 1;
-    codeEditor.value = `${value.slice(0, lineStart)}${prefix}${value.slice(lineStart)}`;
-    codeEditor.selectionStart += prefix.length;
-    codeEditor.selectionEnd += prefix.length;
-    setText(codeEditor.value);
-    codeEditor.focus();
+    const editor = getActiveTextarea();
+    const lineStart = editor.value.lastIndexOf("\n", editor.selectionStart - 1) + 1;
+    editor.value = `${editor.value.slice(0, lineStart)}${prefix}${editor.value.slice(lineStart)}`;
+    editor.selectionStart += prefix.length;
+    editor.selectionEnd += prefix.length;
+    setText(editor.value, true, getActiveDoc().activePane);
+    editor.focus();
   }
 
   function maybeShowSlashMenu() {
-    const start = codeEditor.selectionStart;
-    const value = codeEditor.value;
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const linePrefix = value.slice(lineStart, start);
+    const editor = getActiveTextarea();
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const lineStart = editor.value.lastIndexOf("\n", start - 1) + 1;
+    const linePrefix = editor.value.slice(lineStart, start);
     if (!linePrefix.startsWith("/")) {
       slashSuppressed = false;
       hideSlashMenu();
       return;
     }
     if (slashSuppressed) return;
-
     renderSlashMenu();
     slashMenu.hidden = false;
     positionSlashMenu();
   }
 
   function positionSlashMenu() {
-    if (slashMenu.hidden) return;
+    const editor = getActiveTextarea();
+    if (slashMenu.hidden || !editor) return;
     slashMenu.style.maxHeight = "";
     slashMenu.style.overflowY = "";
 
-    const rect = getTextareaCaretRect(codeEditor);
+    const rect = getTextareaCaretRect(editor);
     const menuRect = slashMenu.getBoundingClientRect();
-    const editorRect = codeEditor.getBoundingClientRect();
+    const editorRect = editor.getBoundingClientRect();
     const left = clamp(rect.left, editorRect.left + 8, window.innerWidth - menuRect.width - 8);
     const below = rect.bottom + 6;
     const belowSpace = window.innerHeight - below - 8;
     const aboveSpace = rect.top - editorRect.top - 14;
     const opensAbove = menuRect.height > belowSpace && aboveSpace > belowSpace;
     const availableHeight = Math.max(96, opensAbove ? aboveSpace : belowSpace);
-    const top = opensAbove
-      ? Math.max(editorRect.top + 8, rect.top - Math.min(menuRect.height, availableHeight) - 6)
-      : below;
+    const top = opensAbove ? Math.max(editorRect.top + 8, rect.top - Math.min(menuRect.height, availableHeight) - 6) : below;
 
     slashMenu.style.maxHeight = `${availableHeight}px`;
     slashMenu.style.overflowY = menuRect.height > availableHeight ? "auto" : "";
@@ -983,59 +1260,10 @@ Code block
     return filtered.length ? filtered : slashCommands;
   }
 
-  function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  function getTextareaCaretRect(textarea) {
-    const textareaRect = textarea.getBoundingClientRect();
-    const style = window.getComputedStyle(textarea);
-    const mirror = document.createElement("div");
-    [
-      "boxSizing", "width", "height", "overflowX", "overflowY", "borderTopWidth",
-      "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "paddingTop",
-      "paddingRight", "paddingBottom", "paddingLeft", "fontStyle", "fontVariant",
-      "fontWeight", "fontStretch", "fontSize", "fontSizeAdjust", "lineHeight",
-      "fontFamily", "textAlign", "textTransform", "textIndent", "textDecoration",
-      "letterSpacing", "wordSpacing", "tabSize", "MozTabSize", "whiteSpace"
-    ].forEach((property) => {
-      mirror.style[property] = style[property];
-    });
-    mirror.style.position = "fixed";
-    mirror.style.visibility = "hidden";
-    mirror.style.left = `${textareaRect.left}px`;
-    mirror.style.top = `${textareaRect.top}px`;
-    mirror.style.whiteSpace = "pre-wrap";
-    mirror.style.wordWrap = "break-word";
-
-    const marker = document.createElement("span");
-    mirror.textContent = textarea.value.slice(0, textarea.selectionStart);
-    marker.textContent = "\u200b";
-    mirror.appendChild(marker);
-    document.body.appendChild(mirror);
-    const markerRect = marker.getBoundingClientRect();
-    document.body.removeChild(mirror);
-
-    const left = markerRect.left - textarea.scrollLeft;
-    const top = markerRect.top - textarea.scrollTop;
-    return {
-      left: Math.min(left, textareaRect.right - 220),
-      top,
-      bottom: top + parseFloat(style.lineHeight || "20")
-    };
-  }
-
-  function hideSlashMenu() {
-    slashMenu.hidden = true;
-    slashSearch = "";
-  }
-
   function moveSlashSelection(direction) {
     const commands = getFilteredSlashCommands();
     slashIndex = (slashIndex + direction + commands.length) % commands.length;
-    Array.from(slashMenu.children).forEach((child, index) => {
-      child.classList.toggle("active", index === slashIndex);
-    });
+    Array.from(slashMenu.children).forEach((child, index) => child.classList.toggle("active", index === slashIndex));
     slashMenu.children[slashIndex]?.scrollIntoView({ block: "nearest" });
     positionSlashMenu();
   }
@@ -1077,6 +1305,179 @@ Code block
     return false;
   }
 
+  function hideSlashMenu() {
+    slashMenu.hidden = true;
+    slashSearch = "";
+  }
+
+  function applyLineCommand(command, stripSlash) {
+    const editor = getActiveTextarea();
+    if (!command || !editor) return;
+    const start = editor.selectionStart;
+    const lineStart = editor.value.lastIndexOf("\n", start - 1) + 1;
+    const lineEndIndex = editor.value.indexOf("\n", start);
+    const lineEnd = lineEndIndex === -1 ? editor.value.length : lineEndIndex;
+    const line = editor.value.slice(lineStart, lineEnd);
+    const text = stripBlockMarker(stripSlash ? line.replace(/^\/\w*\s*/, "") : line);
+
+    if (command.marker === "paragraph") {
+      editor.value = `${editor.value.slice(0, lineStart)}${text}${editor.value.slice(lineEnd)}`;
+      setSelection(lineStart + text.length);
+      setText(editor.value, true, getActiveDoc().activePane);
+      slashSuppressed = false;
+      hideSlashMenu();
+      editor.focus();
+      return;
+    }
+
+    if (command.marker === "table") {
+      const table = window.MDBasicsTableEditing.createDefaultTable();
+      const prefix = lineStart > 0 && editor.value[lineStart - 1] !== "\n" ? "\n" : "";
+      const suffix = lineEnd < editor.value.length && editor.value[lineEnd] !== "\n" ? "\n" : "";
+      const replacement = `${prefix}${table.text}${suffix}`;
+      editor.value = `${editor.value.slice(0, lineStart)}${replacement}${editor.value.slice(lineEnd)}`;
+      setSelection(lineStart + prefix.length + table.cursorOffset);
+      setText(editor.value, true, getActiveDoc().activePane);
+      slashSuppressed = false;
+      hideSlashMenu();
+      editor.focus();
+      setStatus("Inserted table");
+      return;
+    }
+
+    const marker = command.marker === "numbered" ? `${getNextListNumberBefore(lineStart)}. ` : command.marker;
+    const replacement = marker.includes("\n") ? marker : `${marker}${text}`;
+    editor.value = `${editor.value.slice(0, lineStart)}${replacement}${editor.value.slice(lineEnd)}`;
+    setSelection(lineStart + (command.cursorOffset ?? replacement.length));
+    setText(editor.value, true, getActiveDoc().activePane);
+    slashSuppressed = false;
+    hideSlashMenu();
+    editor.focus();
+  }
+
+  function stripBlockMarker(line) {
+    return line
+      .replace(/^\s{0,3}#{1,6}\s+/, "")
+      .replace(/^\s{0,3}>\s?/, "")
+      .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/, "")
+      .replace(/^\s*[-*+]\s+/, "")
+      .replace(/^\s*\d+\.\s+/, "");
+  }
+
+  function getNextListNumberBefore(position) {
+    const editor = getActiveTextarea();
+    const lines = editor.value.slice(0, position).split(/\r?\n/).reverse();
+    for (const line of lines) {
+      const match = line.match(/^\s*(\d+)\.\s/);
+      if (match) return Number(match[1]) + 1;
+      if (line.trim() !== "") break;
+    }
+    return 1;
+  }
+
+  function syncOtherPanesFrom(sourcePaneId) {
+    const doc = getActiveDoc();
+    if (!doc || !doc.paneSyncLocked || doc.layoutMode !== "split" || paneSyncing) return;
+    const sourceLine = doc.panes[sourcePaneId].sourceLine || 1;
+    paneSyncing = true;
+    getVisiblePaneIds(doc).forEach((paneId) => {
+      if (paneId === sourcePaneId) return;
+      doc.panes[paneId].sourceLine = sourceLine;
+      const node = paneNodes.get(paneId);
+      if (!node) return;
+      if (doc.panes[paneId].view === VIEW_CODE && node.textarea) {
+        node.textarea.scrollTop = estimateScrollTopForLine(node.textarea, sourceLine);
+        doc.panes[paneId].scrollTop = node.textarea.scrollTop;
+      }
+      if (doc.panes[paneId].view === VIEW_PREVIEW && node.preview) {
+        scrollPreviewToLine(node.preview, sourceLine);
+      }
+    });
+    paneSyncing = false;
+  }
+
+  function syncInspectorFromPane(paneId) {
+    const doc = getActiveDoc();
+    if (!doc || !inspectorOpen || !diffFollowLocked) return;
+    const sourceLine = doc.panes[paneId]?.sourceLine || 1;
+    const target = diffInspectorContent.querySelector(`[data-source-line="${sourceLine}"]`)
+      || findNearestSourceElement(diffInspectorContent, sourceLine);
+    if (target) diffInspectorContent.scrollTop = target.offsetTop - diffInspectorContent.clientHeight * 0.2;
+  }
+
+  function scrollPreviewToLine(preview, line) {
+    const target = preview.querySelector(`[data-source-line="${line}"]`) || findNearestSourceElement(preview, line);
+    if (target) preview.scrollTop = target.offsetTop - preview.clientHeight * 0.2;
+  }
+
+  function findNearestSourceElement(container, line) {
+    const elements = Array.from(container.querySelectorAll("[data-source-line]"));
+    if (!elements.length) return null;
+    return elements.reduce((best, item) => {
+      const delta = Math.abs(Number(item.dataset.sourceLine) - line);
+      const bestDelta = Math.abs(Number(best.dataset.sourceLine) - line);
+      return delta < bestDelta ? item : best;
+    }, elements[0]);
+  }
+
+  function getFirstVisibleSourceLine(container) {
+    const elements = Array.from(container.querySelectorAll("[data-source-line]"));
+    const current = elements.find((item) => item.offsetTop + item.offsetHeight > container.scrollTop + 8);
+    return Number((current || elements[0])?.dataset.sourceLine || 1);
+  }
+
+  function getLineForPosition(value, position) {
+    return value.slice(0, position).split(/\r?\n/).length;
+  }
+
+  function estimateLineFromScroll(textarea) {
+    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight || "24");
+    return Math.max(1, Math.floor(textarea.scrollTop / lineHeight) + 1);
+  }
+
+  function estimateScrollTopForLine(textarea, line) {
+    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight || "24");
+    return Math.max(0, (line - 1) * lineHeight);
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function getTextareaCaretRect(textarea) {
+    const textareaRect = textarea.getBoundingClientRect();
+    const style = window.getComputedStyle(textarea);
+    const mirror = document.createElement("div");
+    [
+      "boxSizing", "width", "height", "overflowX", "overflowY", "borderTopWidth",
+      "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "paddingTop",
+      "paddingRight", "paddingBottom", "paddingLeft", "fontStyle", "fontVariant",
+      "fontWeight", "fontStretch", "fontSize", "fontSizeAdjust", "lineHeight",
+      "fontFamily", "textAlign", "textTransform", "textIndent", "textDecoration",
+      "letterSpacing", "wordSpacing", "tabSize", "MozTabSize", "whiteSpace"
+    ].forEach((property) => {
+      mirror.style[property] = style[property];
+    });
+    mirror.style.position = "fixed";
+    mirror.style.visibility = "hidden";
+    mirror.style.left = `${textareaRect.left}px`;
+    mirror.style.top = `${textareaRect.top}px`;
+    mirror.style.whiteSpace = "pre-wrap";
+    mirror.style.wordWrap = "break-word";
+
+    const marker = document.createElement("span");
+    mirror.textContent = textarea.value.slice(0, textarea.selectionStart);
+    marker.textContent = "\u200b";
+    mirror.appendChild(marker);
+    document.body.appendChild(mirror);
+    const markerRect = marker.getBoundingClientRect();
+    document.body.removeChild(mirror);
+
+    const left = markerRect.left - textarea.scrollLeft;
+    const top = markerRect.top - textarea.scrollTop;
+    return { left: Math.min(left, textareaRect.right - 220), top, bottom: top + parseFloat(style.lineHeight || "20") };
+  }
+
   function handleTopMenuTypeahead(event) {
     if (menuPanel.hidden) return false;
     if (event.key === "Escape") {
@@ -1101,9 +1502,7 @@ Code block
       event.preventDefault();
       menuSearch += event.key.toLowerCase();
       clearTimeout(menuSearchTimer);
-      menuSearchTimer = setTimeout(() => {
-        menuSearch = "";
-      }, 800);
+      menuSearchTimer = setTimeout(() => { menuSearch = ""; }, 800);
       jumpTopMenu(menuSearch);
       return true;
     }
@@ -1127,76 +1526,6 @@ Code block
     target.scrollIntoView({ block: "nearest" });
   }
 
-  function applyLineCommand(command, stripSlash) {
-    if (!command) return;
-    const start = codeEditor.selectionStart;
-    const value = codeEditor.value;
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const lineEndIndex = value.indexOf("\n", start);
-    const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
-    const line = value.slice(lineStart, lineEnd);
-    const text = stripBlockMarker(stripSlash ? line.replace(/^\/\w*\s*/, "") : line);
-
-    if (command.marker === "paragraph") {
-      codeEditor.value = `${value.slice(0, lineStart)}${text}${value.slice(lineEnd)}`;
-      const cursor = lineStart + text.length;
-      codeEditor.selectionStart = cursor;
-      codeEditor.selectionEnd = cursor;
-      setText(codeEditor.value);
-      slashSuppressed = false;
-      hideSlashMenu();
-      codeEditor.focus();
-      return;
-    }
-
-    if (command.marker === "table") {
-      const table = window.MDBasicsTableEditing.createDefaultTable();
-      const prefix = lineStart > 0 && value[lineStart - 1] !== "\n" ? "\n" : "";
-      const suffix = lineEnd < value.length && value[lineEnd] !== "\n" ? "\n" : "";
-      const replacement = `${prefix}${table.text}${suffix}`;
-      codeEditor.value = `${value.slice(0, lineStart)}${replacement}${value.slice(lineEnd)}`;
-      const cursor = lineStart + prefix.length + table.cursorOffset;
-      codeEditor.selectionStart = cursor;
-      codeEditor.selectionEnd = cursor;
-      setText(codeEditor.value);
-      slashSuppressed = false;
-      hideSlashMenu();
-      codeEditor.focus();
-      setStatus("Inserted table");
-      return;
-    }
-
-    const marker = command.marker === "numbered" ? `${getNextListNumberBefore(lineStart)}. ` : command.marker;
-    const replacement = marker.includes("\n") ? marker : `${marker}${text}`;
-    codeEditor.value = `${value.slice(0, lineStart)}${replacement}${value.slice(lineEnd)}`;
-    const cursor = lineStart + (command.cursorOffset ?? replacement.length);
-    codeEditor.selectionStart = cursor;
-    codeEditor.selectionEnd = cursor;
-    setText(codeEditor.value);
-    slashSuppressed = false;
-    hideSlashMenu();
-    codeEditor.focus();
-  }
-
-  function stripBlockMarker(line) {
-    return line
-      .replace(/^\s{0,3}#{1,6}\s+/, "")
-      .replace(/^\s{0,3}>\s?/, "")
-      .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/, "")
-      .replace(/^\s*[-*+]\s+/, "")
-      .replace(/^\s*\d+\.\s+/, "");
-  }
-
-  function getNextListNumberBefore(position) {
-    const lines = codeEditor.value.slice(0, position).split(/\r?\n/).reverse();
-    for (const line of lines) {
-      const match = line.match(/^\s*(\d+)\.\s/);
-      if (match) return Number(match[1]) + 1;
-      if (line.trim() !== "") break;
-    }
-    return 1;
-  }
-
   function escapeHtml(text) {
     return text.replace(/[&<>"']/g, (char) => ({
       "&": "&amp;",
@@ -1207,12 +1536,37 @@ Code block
     })[char]);
   }
 
+  function setStatus(message) {
+    statusMessage.textContent = message;
+  }
+
   function bindEvents() {
     document.getElementById("newTabButton").addEventListener("click", () => createDocument());
     emptyOpenButton.addEventListener("click", openFiles);
-    codeModeButton.addEventListener("click", () => setView(VIEW_CODE));
-    renderModeButton.addEventListener("click", () => setView(VIEW_RENDERED));
-    diffModeButton.addEventListener("click", () => setView(VIEW_DIFF));
+    singleLayoutButton.addEventListener("click", () => setLayoutMode("single"));
+    splitLayoutButton.addEventListener("click", () => setLayoutMode("split"));
+    primaryPaneButton.addEventListener("click", () => setActivePane(PANE_PRIMARY));
+    secondaryPaneButton.addEventListener("click", () => setActivePane(PANE_SECONDARY));
+    paneCodeButton.addEventListener("click", () => setActivePaneView(VIEW_CODE));
+    panePreviewButton.addEventListener("click", () => setActivePaneView(VIEW_PREVIEW));
+    paneSyncButton.addEventListener("click", () => {
+      const doc = getActiveDoc();
+      if (!doc) return;
+      doc.paneSyncLocked = !doc.paneSyncLocked;
+      updateToolbar();
+    });
+    diffInspectorButton.addEventListener("click", toggleInspector);
+    diffFollowButton.addEventListener("click", () => {
+      diffFollowLocked = !diffFollowLocked;
+      updateToolbar();
+      renderInspector();
+    });
+    closeInspectorButton.addEventListener("click", () => {
+      inspectorOpen = false;
+      renderInspector();
+      updateToolbar();
+    });
+
     document.querySelectorAll("[data-menu]").forEach((button) => {
       button.addEventListener("pointerdown", (event) => {
         event.stopPropagation();
@@ -1223,26 +1577,12 @@ Code block
         if (activeMenuName) openMenuPanel(button.dataset.menu, button);
       });
     });
+
     window.addEventListener("pointerdown", (event) => {
       if (!menuPanel.contains(event.target)) closeMenuPanel();
       if (!contextMenu.contains(event.target) && !contextFloatingMenus.some((menu) => menu.contains(event.target))) closeContextMenu();
-      if (!slashMenu.contains(event.target) && event.target !== codeEditor) hideSlashMenu();
+      if (!slashMenu.contains(event.target) && event.target !== getActiveTextarea()) hideSlashMenu();
     });
-
-    codeEditor.addEventListener("input", () => setText(codeEditor.value));
-    codeEditor.addEventListener("keyup", maybeShowSlashMenu);
-    codeEditor.addEventListener("click", updateCursorStatus);
-    codeEditor.addEventListener("select", updateCursorStatus);
-    codeEditor.addEventListener("scroll", () => {
-      lineNumbers.scrollTop = codeEditor.scrollTop;
-    });
-    codeEditor.addEventListener("wheel", (event) => {
-      if (!event.ctrlKey) return;
-      event.preventDefault();
-      setEditorZoom(editorZoom + (event.deltaY < 0 ? 10 : -10));
-    }, { passive: false });
-    codeEditor.addEventListener("contextmenu", showContextMenu);
-    codeEditor.addEventListener("keydown", handleCodeKeydown);
     window.addEventListener("keydown", handleGlobalKeydown);
     window.mdb.onOpenPath(openPath);
   }

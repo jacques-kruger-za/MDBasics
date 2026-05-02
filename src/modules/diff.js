@@ -13,10 +13,10 @@
       const left = beforeLines[index];
       const right = afterLines[index];
       if (left === right) {
-        rows.push(`<div class="diff-line same"><span>${index + 1}</span><code>${escapeHtml(left || "")}</code></div>`);
+        rows.push(`<div class="diff-line same" data-source-line="${index + 1}"><span>${index + 1}</span><code>${escapeHtml(left || "")}</code></div>`);
       } else {
-        if (left !== undefined) rows.push(`<div class="diff-line removed"><span>${index + 1}</span><code>- ${escapeHtml(left)}</code></div>`);
-        if (right !== undefined) rows.push(`<div class="diff-line added"><span>${index + 1}</span><code>+ ${escapeHtml(right)}</code></div>`);
+        if (left !== undefined) rows.push(`<div class="diff-line removed" data-source-line="${index + 1}"><span>${index + 1}</span><code>- ${escapeHtml(left)}</code></div>`);
+        if (right !== undefined) rows.push(`<div class="diff-line added" data-source-line="${index + 1}"><span>${index + 1}</span><code>+ ${escapeHtml(right)}</code></div>`);
       }
     }
 

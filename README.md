@@ -8,9 +8,9 @@ MDBasics is a minimal Windows-focused desktop Markdown editor built with Electro
 - Windows file association for `.md`, `.markdown`, `.mdown`, and `.mkd`
 - Markdown file open, save, and save as
 - Tabbed documents
-- Code editor with Markdown-aware helpers
-- Read-only rendered preview
-- Read-only diff against the saved/opened version
+- Single-pane and split-pane document layouts
+- Editable Code panes and read-only Preview panes
+- Right-side Diff inspector against the saved/opened version
 - Slash command menu for common block types
 - Keyboard shortcuts for block conversion and inline formatting
 - Code-view table helpers for standard Markdown pipe tables
@@ -20,7 +20,7 @@ MDBasics is a minimal Windows-focused desktop Markdown editor built with Electro
 - Export to HTML, PDF, and DOCX
 - Print support
 
-WYSIWYG editing is intentionally paused. Rendered and Diff are active read-only MVP views.
+WYSIWYG editing is intentionally paused. Preview panes and the Diff inspector are read-only MVP views.
 
 ## Install
 

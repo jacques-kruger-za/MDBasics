@@ -14,7 +14,7 @@ MDBasics is currently optimized around a code-first Markdown editing flow.
 
 ## View Model
 
-MDBasics has one editable surface for the MVP: the Markdown code editor. Rendered and Diff are read-only views. WYSIWYG rendered editing is intentionally paused for future work.
+MDBasics has one document source of truth per tab. Each tab can render one or two document panes. Each pane can be editable Code or read-only Preview. The right inspector is separate from document panes and currently hosts the read-only Diff tool.
 
 WYSIWYG work should happen in `0.2.0-alpha.x` releases until Markdown round-tripping is stable enough for `0.2.0`.
 
@@ -40,5 +40,5 @@ The current code editor is textarea-based and implements app-level Markdown ergo
 
 ## Read-Only Views
 
-- Rendered: sanitized Markdown preview generated from the active document.
-- Diff: line diff between the current document text and the last opened/saved text.
+- Preview panes: sanitized Markdown preview generated from the active document, with source-line block anchors for sync.
+- Diff inspector: line diff between the current document text and the last opened/saved text.
