@@ -219,13 +219,10 @@ button.active {
   position: absolute;
   top: -6px;
   left: calc(100% + 6px);
+  right: auto;
   display: none;
   min-width: 190px;
-}
-
-.context-menu.submenu-left .submenu-panel {
-  right: calc(100% + 6px);
-  left: auto;
+  overscroll-behavior: contain;
 }
 
 .submenu-wrap:hover > .submenu-panel,

@@ -680,14 +680,12 @@ Code block
     contextMenu.hidden = false;
     const rect = contextMenu.getBoundingClientRect();
     const left = clamp(event.clientX, 8, window.innerWidth - rect.width - 8);
-    if (left + rect.width + 210 > window.innerWidth) contextMenu.classList.add("submenu-left");
     contextMenu.style.left = `${left}px`;
     contextMenu.style.top = `${clamp(event.clientY, 8, window.innerHeight - rect.height - 8)}px`;
   }
 
   function closeContextMenu() {
     contextMenu.hidden = true;
-    contextMenu.classList.remove("submenu-left");
   }
 
   function addContextSeparator() {
@@ -720,9 +718,33 @@ Code block
     const submenu = document.createElement("div");
     submenu.className = "menu-panel submenu-panel";
     items.forEach(([itemLabel, action]) => addContextButton(itemLabel, action, submenu));
+    wrapper.addEventListener("pointerenter", () => positionSubmenu(wrapper, submenu));
+    wrapper.addEventListener("focusin", () => positionSubmenu(wrapper, submenu));
     wrapper.appendChild(trigger);
     wrapper.appendChild(submenu);
     contextMenu.appendChild(wrapper);
+  }
+
+  function positionSubmenu(wrapper, submenu) {
+    submenu.style.visibility = "hidden";
+    submenu.style.display = "grid";
+    submenu.style.maxHeight = "";
+    submenu.style.overflowY = "";
+
+    const triggerRect = wrapper.getBoundingClientRect();
+    const submenuRect = submenu.getBoundingClientRect();
+    const opensLeft = triggerRect.right + 6 + submenuRect.width > window.innerWidth - 8
+      && triggerRect.left - submenuRect.width - 6 >= 8;
+    const availableHeight = Math.max(96, window.innerHeight - 16);
+    const top = clamp(triggerRect.top - 6, 8, window.innerHeight - Math.min(submenuRect.height, availableHeight) - 8);
+
+    submenu.style.position = "fixed";
+    submenu.style.left = opensLeft ? `${triggerRect.left - submenuRect.width - 6}px` : `${triggerRect.right + 6}px`;
+    submenu.style.right = "auto";
+    submenu.style.top = `${top}px`;
+    submenu.style.maxHeight = `${availableHeight}px`;
+    submenu.style.overflowY = submenuRect.height > availableHeight ? "auto" : "";
+    submenu.style.visibility = "";
   }
 
   function getTableContextItems() {
