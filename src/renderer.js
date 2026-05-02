@@ -20,11 +20,13 @@
   const contextMenu = document.getElementById("contextMenu");
   const slashMenu = document.getElementById("slashMenu");
 
-  const FEATURE_WYSIWYG = false;
-  const FEATURE_DIFF = false;
+  const VIEW_CODE = "code";
+  const VIEW_RENDERED = "rendered";
+  const VIEW_DIFF = "diff";
 
   let activeId = null;
   let documents = [];
+  let activeView = VIEW_CODE;
   let applyingHistory = false;
   let lineWrap = true;
   let showLineNumbers = false;
@@ -83,10 +85,8 @@ Code block
   createDocument({ text: "" });
 
   function parkInactiveModules() {
-    renderModeButton.hidden = !FEATURE_WYSIWYG;
-    diffModeButton.hidden = !FEATURE_DIFF;
-    renderEditor.hidden = true;
-    diffEditor.hidden = true;
+    renderEditor.setAttribute("contenteditable", "false");
+    diffEditor.setAttribute("contenteditable", "false");
   }
 
   function createDocument({ title = "Untitled", filePath = null, text = "" } = {}) {
@@ -95,6 +95,7 @@ Code block
       title,
       filePath,
       text,
+      savedText: text,
       undoStack: [],
       redoStack: [],
       dirty: false
@@ -138,12 +139,41 @@ Code block
     filePathEl.textContent = doc?.filePath || doc?.title || "No document";
     charCountEl.textContent = `${doc?.text.length || 0} chars`;
     emptyState.hidden = Boolean(doc);
-    codeEditorWrap.hidden = !doc;
-    codeModeButton.classList.toggle("active", Boolean(doc));
-    codeModeButton.disabled = !doc;
+    codeEditorWrap.hidden = !doc || activeView !== VIEW_CODE;
+    renderEditor.hidden = !doc || activeView !== VIEW_RENDERED;
+    diffEditor.hidden = !doc || activeView !== VIEW_DIFF;
+    codeModeButton.classList.toggle("active", activeView === VIEW_CODE && Boolean(doc));
+    renderModeButton.classList.toggle("active", activeView === VIEW_RENDERED && Boolean(doc));
+    diffModeButton.classList.toggle("active", activeView === VIEW_DIFF && Boolean(doc));
+    [codeModeButton, renderModeButton, diffModeButton].forEach((button) => {
+      button.disabled = !doc;
+    });
+    updateReadonlyViews();
     updateGhostText();
     updateCursorStatus();
     updateLineNumbers();
+  }
+
+  function setView(view) {
+    activeView = view;
+    updateChrome();
+    setStatus({
+      [VIEW_CODE]: "Code mode active",
+      [VIEW_RENDERED]: "Rendered preview active",
+      [VIEW_DIFF]: "Diff view active"
+    }[view]);
+    if (view === VIEW_CODE) codeEditor.focus();
+  }
+
+  function updateReadonlyViews() {
+    const doc = getActiveDoc();
+    if (!doc) return;
+    if (activeView === VIEW_RENDERED) {
+      window.MDBasicsDisplay.renderMarkdown(renderEditor, window.mdb.markdownToHtml, doc.text);
+    }
+    if (activeView === VIEW_DIFF) {
+      diffEditor.innerHTML = window.MDBasicsDiff.buildLineDiff(doc.savedText || "", doc.text || "", escapeHtml);
+    }
   }
 
   function updateGhostText() {
@@ -251,7 +281,9 @@ Code block
       filePath: file.filePath,
       text: file.text
     });
-    getActiveDoc().dirty = false;
+    const doc = getActiveDoc();
+    doc.savedText = file.text;
+    doc.dirty = false;
     updateChrome();
   }
 
@@ -271,6 +303,7 @@ Code block
       }
       doc.filePath = saved.filePath;
       doc.title = saved.filePath.split(/[\\/]/).pop();
+      doc.savedText = doc.text;
       doc.dirty = false;
       updateChrome();
       setStatus("Saved");
@@ -374,9 +407,9 @@ Code block
         ["Underline", () => wrapCodeSelection("<u>", "</u>")]
       ],
       view: [
-        ["Code", () => setStatus("Code mode active")],
-        ["Rendered", () => setStatus("Rendered mode is parked")],
-        ["Diff", () => setStatus("Diff mode is parked")]
+        ["Code", () => setView(VIEW_CODE)],
+        ["Rendered", () => setView(VIEW_RENDERED)],
+        ["Diff", () => setView(VIEW_DIFF)]
       ],
       settings: [
         [document.body.classList.contains("light") ? "Dark Mode" : "Light Mode", toggleTheme],
@@ -1177,9 +1210,9 @@ Code block
   function bindEvents() {
     document.getElementById("newTabButton").addEventListener("click", () => createDocument());
     emptyOpenButton.addEventListener("click", openFiles);
-    codeModeButton.addEventListener("click", () => setStatus("Code mode active"));
-    renderModeButton.addEventListener("click", () => setStatus("Rendered mode is parked"));
-    diffModeButton.addEventListener("click", () => setStatus("Diff mode is parked"));
+    codeModeButton.addEventListener("click", () => setView(VIEW_CODE));
+    renderModeButton.addEventListener("click", () => setView(VIEW_RENDERED));
+    diffModeButton.addEventListener("click", () => setView(VIEW_DIFF));
     document.querySelectorAll("[data-menu]").forEach((button) => {
       button.addEventListener("pointerdown", (event) => {
         event.stopPropagation();

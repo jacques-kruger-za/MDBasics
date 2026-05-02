@@ -1,5 +1,9 @@
 (function () {
   function buildLineDiff(before, after, escapeHtml) {
+    if (before === after) {
+      return `<div class="diff-empty">No changes from the saved version.</div>`;
+    }
+
     const beforeLines = before.split(/\r?\n/);
     const afterLines = after.split(/\r?\n/);
     const max = Math.max(beforeLines.length, afterLines.length);

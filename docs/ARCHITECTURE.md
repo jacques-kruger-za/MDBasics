@@ -8,11 +8,13 @@ MDBasics is currently optimized around a code-first Markdown editing flow.
 - `src/preload.js`: exposes a small `window.mdb` bridge to the renderer while keeping node integration disabled.
 - `src/renderer.js`: owns the active app state, tabs, code editor behavior, menus, status bar, and export actions.
 - `src/modules/table-editing.js`: owns code-view Markdown table parsing, formatting, navigation, and row/column edits.
+- `src/modules/display.js`: owns read-only Markdown preview rendering.
+- `src/modules/diff.js`: owns read-only line diff rendering against the saved/opened document baseline.
 - `src/styles.css`: owns visual styling for the shell, editor, menus, slash menu, tabs, and status bar.
 
-## Parked Modules
+## View Model
 
-`src/modules/wysiwyg.js` and `src/modules/diff.js` are module boundaries for future work. They are deliberately not active in the current UI while the code editor is the stable product surface.
+MDBasics has one editable surface for the MVP: the Markdown code editor. Rendered and Diff are read-only views. WYSIWYG rendered editing is intentionally paused for future work.
 
 ## Markdown Conversion
 
@@ -33,3 +35,8 @@ The current code editor is textarea-based and implements app-level Markdown ergo
 - optional line numbers
 - line/column/character status
 - zoom through `Ctrl+mouse wheel`
+
+## Read-Only Views
+
+- Rendered: sanitized Markdown preview generated from the active document.
+- Diff: line diff between the current document text and the last opened/saved text.

@@ -8,6 +8,8 @@ MDBasics is a minimal Windows-focused desktop Markdown editor built with Electro
 - Markdown file open, save, and save as
 - Tabbed documents
 - Code editor with Markdown-aware helpers
+- Read-only rendered preview
+- Read-only diff against the saved/opened version
 - Slash command menu for common block types
 - Keyboard shortcuts for block conversion and inline formatting
 - Code-view table helpers for standard Markdown pipe tables
@@ -17,7 +19,7 @@ MDBasics is a minimal Windows-focused desktop Markdown editor built with Electro
 - Export to HTML, PDF, and DOCX
 - Print support
 
-Rendered/WYSIWYG editing and diff are parked behind modules for now. They are not active in the UI while code editing is being stabilized.
+WYSIWYG editing is intentionally paused. Rendered and Diff are active read-only MVP views.
 
 ## Install
 
@@ -85,11 +87,11 @@ src/preload.js          Safe renderer bridge and Markdown conversion helpers
 src/renderer.js         Active code-editor-first renderer
 src/styles.css          App styling
 src/modules/table-editing.js  Code-view Markdown table editing helpers
-src/modules/diff.js     Parked diff module
-src/modules/wysiwyg.js  Parked WYSIWYG module boundary
+src/modules/display.js  Read-only rendered Markdown view
+src/modules/diff.js     Read-only line diff view
 logs/CHANGELOG.md       Development log
 ```
 
 ## Development Notes
 
-The active editor is a textarea-based Markdown code editor. WYSIWYG and diff code are intentionally ringfenced so they can be reintroduced deliberately after the core code-editing experience is stable.
+The active editor is a textarea-based Markdown code editor. Rendered and Diff are read-only support views. WYSIWYG editing should be reintroduced deliberately after the core code-editing MVP is stable.

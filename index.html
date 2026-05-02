@@ -20,7 +20,7 @@
           <button id="codeModeButton" class="active" title="Code view" aria-label="Code view">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
           </button>
-          <button id="renderModeButton" title="Rendered editor" aria-label="Rendered editor">
+          <button id="renderModeButton" title="Rendered preview" aria-label="Rendered preview">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
           <button id="diffModeButton" title="Diff view" aria-label="Diff view">
@@ -48,8 +48,8 @@
             <textarea id="codeEditor" spellcheck="false" aria-label="Markdown code editor"></textarea>
             <pre id="ghostText" class="ghost-text" aria-hidden="true"></pre>
           </div>
-          <div id="renderEditor" class="markdown-body" aria-label="Rendered Markdown editor"></div>
-          <section id="diffEditor" class="diff-view" aria-label="Diff against previous edit"></section>
+          <div id="renderEditor" class="markdown-body" aria-label="Rendered Markdown preview"></div>
+          <section id="diffEditor" class="diff-view" aria-label="Diff against saved version"></section>
         </main>
 
         <footer class="statusbar">
@@ -65,7 +65,7 @@
     </div>
 
     <script src="./src/modules/diff.js"></script>
-    <script src="./src/modules/wysiwyg.js"></script>
+    <script src="./src/modules/display.js"></script>
     <script src="./src/modules/table-editing.js"></script>
     <script src="./src/renderer.js"></script>
   </body>
