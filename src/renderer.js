@@ -718,32 +718,57 @@ Code block
     const submenu = document.createElement("div");
     submenu.className = "menu-panel submenu-panel";
     items.forEach(([itemLabel, action]) => addContextButton(itemLabel, action, submenu));
-    wrapper.addEventListener("pointerenter", () => positionSubmenu(wrapper, submenu));
-    wrapper.addEventListener("focusin", () => positionSubmenu(wrapper, submenu));
     wrapper.appendChild(trigger);
     wrapper.appendChild(submenu);
+    wrapper.addEventListener("pointerenter", () => openSubmenu(wrapper, submenu));
+    wrapper.addEventListener("pointerleave", () => closeSubmenu(wrapper, submenu));
+    wrapper.addEventListener("focusin", () => openSubmenu(wrapper, submenu));
+    wrapper.addEventListener("focusout", (event) => {
+      if (!wrapper.contains(event.relatedTarget)) closeSubmenu(wrapper, submenu);
+    });
     contextMenu.appendChild(wrapper);
   }
 
-  function positionSubmenu(wrapper, submenu) {
+  function openSubmenu(wrapper, submenu) {
+    wrapper.classList.add("submenu-open");
     submenu.style.visibility = "hidden";
     submenu.style.display = "grid";
-    submenu.style.maxHeight = "";
+    submenu.style.position = "fixed";
+    submenu.style.right = "auto";
+    submenu.style.bottom = "auto";
+    submenu.style.maxHeight = "none";
     submenu.style.overflowY = "";
+    submenu.style.left = "0px";
+    submenu.style.top = "0px";
 
     const triggerRect = wrapper.getBoundingClientRect();
     const submenuRect = submenu.getBoundingClientRect();
-    const opensLeft = triggerRect.right + 6 + submenuRect.width > window.innerWidth - 8
-      && triggerRect.left - submenuRect.width - 6 >= 8;
-    const availableHeight = Math.max(96, window.innerHeight - 16);
-    const top = clamp(triggerRect.top - 6, 8, window.innerHeight - Math.min(submenuRect.height, availableHeight) - 8);
+    const gap = 6;
+    const edge = 8;
+    const rightSpace = window.innerWidth - triggerRect.right - gap - edge;
+    const leftSpace = triggerRect.left - gap - edge;
+    const opensLeft = rightSpace < submenuRect.width && leftSpace > rightSpace;
+    const maxHeight = Math.max(96, window.innerHeight - (edge * 2));
+    const effectiveHeight = Math.min(submenuRect.height, maxHeight);
+    const canOpenDown = triggerRect.top + effectiveHeight <= window.innerHeight - edge;
+    const canOpenUp = triggerRect.bottom - effectiveHeight >= edge;
+    const left = opensLeft
+      ? Math.max(edge, triggerRect.left - gap - submenuRect.width)
+      : Math.min(window.innerWidth - edge - submenuRect.width, triggerRect.right + gap);
+    const top = canOpenDown || !canOpenUp
+      ? clamp(triggerRect.top, edge, window.innerHeight - effectiveHeight - edge)
+      : clamp(triggerRect.bottom - effectiveHeight, edge, window.innerHeight - effectiveHeight - edge);
 
-    submenu.style.position = "fixed";
-    submenu.style.left = opensLeft ? `${triggerRect.left - submenuRect.width - 6}px` : `${triggerRect.right + 6}px`;
-    submenu.style.right = "auto";
+    submenu.style.left = `${left}px`;
     submenu.style.top = `${top}px`;
-    submenu.style.maxHeight = `${availableHeight}px`;
-    submenu.style.overflowY = submenuRect.height > availableHeight ? "auto" : "";
+    submenu.style.maxHeight = `${maxHeight}px`;
+    submenu.style.overflowY = submenuRect.height > maxHeight ? "auto" : "";
+    submenu.style.visibility = "";
+  }
+
+  function closeSubmenu(wrapper, submenu) {
+    wrapper.classList.remove("submenu-open");
+    submenu.style.display = "";
     submenu.style.visibility = "";
   }
 

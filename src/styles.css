@@ -216,17 +216,16 @@ button.active {
 }
 
 .submenu-panel {
-  position: absolute;
-  top: -6px;
-  left: calc(100% + 6px);
+  position: fixed;
+  top: 0;
+  left: 0;
   right: auto;
   display: none;
   min-width: 190px;
   overscroll-behavior: contain;
 }
 
-.submenu-wrap:hover > .submenu-panel,
-.submenu-wrap:focus-within > .submenu-panel {
+.submenu-wrap.submenu-open > .submenu-panel {
   display: grid;
 }
 
