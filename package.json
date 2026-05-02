@@ -6,8 +6,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
+    "verify": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/modules/diff.js && node --check src/modules/display.js && node --check src/modules/table-editing.js",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win nsis"
+    "dist": "electron-builder --win nsis",
+    "release:win": "npm run verify && npm run dist"
   },
   "keywords": [
     "markdown",
@@ -22,6 +24,7 @@
     "directories": {
       "output": "dist"
     },
+    "artifactName": "${productName}-${version}-Setup-${arch}.${ext}",
     "files": [
       "index.html",
       "src/**/*",

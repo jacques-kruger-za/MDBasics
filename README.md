@@ -36,10 +36,16 @@ npm start
 ## Build Installer
 
 ```powershell
-npm run dist
+npm run release:win
 ```
 
 The Windows installer is written to `dist/`.
+
+## Versioning
+
+MDBasics uses SemVer-style versions. The MVP baseline is `0.1.0`; WYSIWYG work should iterate as `0.2.0-alpha.x` until it is stable enough for `0.2.0`.
+
+See [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Markdown Shortcuts
 

@@ -1,4 +1,4 @@
-## 2026-05-02
+## v0.1.0 - 2026-05-02
 
 ### Changes
 - Scaffolded MDBasics as a minimal Electron Markdown editor.
@@ -49,6 +49,7 @@
 - Replaced the parked WYSIWYG module with a read-only display module and reactivated Rendered and Diff as MVP read-only views.
 - Fixed view switching by enforcing hidden panes at app CSS level so the code editor no longer overrides the hidden attribute.
 - Added Electron Builder packaging for a local Windows NSIS installer.
+- Added SemVer release guidance, versioned installer artifact names, and a WYSIWYG prerelease path for `0.2.0-alpha.x`.
 
 ### Health Checks
 - Installed dependencies and upgraded Electron to 41.4.0 to clear npm audit advisories.
@@ -56,6 +57,7 @@
 - Verified `html-to-docx` can generate a valid DOCX buffer and reran npm audit with zero vulnerabilities.
 
 ### Notes
-- Rendered editing converts edited HTML back to Markdown for file portability.
+- `v0.1.0` is the MVP baseline.
+- WYSIWYG editing is paused for `0.2.0-alpha.x` iteration builds.
 - Markdown preview HTML is sanitized before rendering.
 - PDF and print use Chromium rendering so output tracks the rendered Markdown view.

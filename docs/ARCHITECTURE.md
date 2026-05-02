@@ -16,6 +16,8 @@ MDBasics is currently optimized around a code-first Markdown editing flow.
 
 MDBasics has one editable surface for the MVP: the Markdown code editor. Rendered and Diff are read-only views. WYSIWYG rendered editing is intentionally paused for future work.
 
+WYSIWYG work should happen in `0.2.0-alpha.x` releases until Markdown round-tripping is stable enough for `0.2.0`.
+
 ## Markdown Conversion
 
 - Markdown to HTML: `marked`, sanitized with `sanitize-html`
