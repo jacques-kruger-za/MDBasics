@@ -61983,7 +61983,6 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
   }
 
   // src/modules/markdown-rich-view.js
-  init_dist();
   init_dist2();
   var headingLine = Decoration.line({ class: "cm-md-heading-line" });
   var quoteLine = Decoration.line({ class: "cm-md-quote-line" });
@@ -62016,98 +62015,102 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
     );
   }
   function buildDecorations(view, syntaxMarkers) {
-    const builder = new RangeSetBuilder();
+    const decorations2 = [];
     const cursor = view.state.selection.main.head;
     let inFence = isInsideFenceBefore(view.state.doc, view.visibleRanges[0]?.from || 0);
     for (const { from: from3, to } of view.visibleRanges) {
       let pos = from3;
       while (pos <= to) {
         const line = view.state.doc.lineAt(pos);
-        inFence = decorateLine(builder, line, cursor, inFence, syntaxMarkers);
+        inFence = decorateLine(decorations2, line, cursor, inFence, syntaxMarkers);
         if (line.to + 1 > to) break;
         pos = line.to + 1;
       }
     }
-    return builder.finish();
+    return Decoration.set(decorations2, true);
   }
-  function decorateLine(builder, line, cursor, inFence, syntaxMarkers) {
+  function decorateLine(decorations2, line, cursor, inFence, syntaxMarkers) {
     const text5 = line.text;
     const fence = text5.match(/^(\s*)(`{3,}|~{3,})(.*)$/);
     if (fence) {
-      builder.add(line.from, line.from, codeLine);
-      addLeadingWhitespace(builder, line, fence[1].length);
-      builder.add(line.from + fence[1].length, line.from + fence[1].length + fence[2].length, classMark("cm-md-code-fence"));
-      if (fence[3]) builder.add(line.from + fence[1].length + fence[2].length, line.to, classMark("cm-md-code-info"));
+      addDecoration(decorations2, line.from, line.from, codeLine);
+      addLeadingWhitespace(decorations2, line, fence[1].length);
+      addDecoration(decorations2, line.from + fence[1].length, line.from + fence[1].length + fence[2].length, classMark("cm-md-code-fence"));
+      if (fence[3]) addDecoration(decorations2, line.from + fence[1].length + fence[2].length, line.to, classMark("cm-md-code-info"));
       return !inFence;
     }
     if (inFence) {
-      builder.add(line.from, line.from, codeLine);
-      if (line.length) builder.add(line.from, line.to, classMark("cm-md-code-content"));
+      addDecoration(decorations2, line.from, line.from, codeLine);
+      if (line.length) addDecoration(decorations2, line.from, line.to, classMark("cm-md-code-content"));
       return inFence;
     }
     const heading2 = text5.match(/^(#{1,6})(\s+)(.*)$/);
     if (heading2) {
-      builder.add(line.from, line.from, headingLine);
-      builder.add(line.from, line.from + heading2[1].length, classMark("cm-md-heading-marker"));
+      addDecoration(decorations2, line.from, line.from, headingLine);
+      addDecoration(decorations2, line.from, line.from + heading2[1].length, classMark("cm-md-heading-marker"));
       const level = Math.min(6, heading2[1].length);
-      builder.add(line.from + heading2[1].length + heading2[2].length, line.to, classMark(`cm-md-heading cm-md-heading-${level}`));
+      addDecoration(decorations2, line.from + heading2[1].length + heading2[2].length, line.to, classMark(`cm-md-heading cm-md-heading-${level}`));
     }
     const quote2 = text5.match(/^(\s*>+\s?)(.*)$/);
     if (quote2) {
-      builder.add(line.from, line.from, quoteLine);
-      builder.add(line.from, line.from + quote2[1].length, classMark("cm-md-quote-marker"));
-      if (quote2[2]) builder.add(line.from + quote2[1].length, line.to, classMark("cm-md-quote-content"));
+      addDecoration(decorations2, line.from, line.from, quoteLine);
+      addDecoration(decorations2, line.from, line.from + quote2[1].length, classMark("cm-md-quote-marker"));
+      if (quote2[2]) addDecoration(decorations2, line.from + quote2[1].length, line.to, classMark("cm-md-quote-content"));
     }
     const list2 = text5.match(/^(\s*)([-+*]|\d+[.)])(\s+)(.*)$/);
     if (list2) {
-      addLeadingWhitespace(builder, line, list2[1].length);
+      addLeadingWhitespace(decorations2, line, list2[1].length);
       const markerStart = line.from + list2[1].length;
-      builder.add(markerStart, markerStart + list2[2].length, classMark("cm-md-list-marker"));
+      addDecoration(decorations2, markerStart, markerStart + list2[2].length, classMark("cm-md-list-marker"));
     }
     if (isTableLike(text5)) {
-      builder.add(line.from, line.from, tableLine);
-      addTableMarks(builder, line);
+      addDecoration(decorations2, line.from, line.from, tableLine);
+      addTableMarks(decorations2, line);
     }
     if (/^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/.test(text5)) {
-      builder.add(line.from, line.from, thematicBreakLine);
-      builder.add(line.from, line.to, classMark("cm-md-thematic-break"));
+      addDecoration(decorations2, line.from, line.from, thematicBreakLine);
+      addDecoration(decorations2, line.from, line.to, classMark("cm-md-thematic-break"));
     }
-    addInlineMatches(builder, line, cursor, /\*\*([^*\n]+)\*\*/g, "cm-md-bold", 2, 2, syntaxMarkers);
-    addInlineMatches(builder, line, cursor, /__([^_\n]+)__/g, "cm-md-bold", 2, 2, syntaxMarkers);
-    addInlineMatches(builder, line, cursor, /(?<!\*)_([^_\n]+)_/g, "cm-md-italic", 1, 1, syntaxMarkers);
-    addInlineMatches(builder, line, cursor, /(?<!\*)\*([^*\n]+)\*/g, "cm-md-italic", 1, 1, syntaxMarkers);
-    addInlineMatches(builder, line, cursor, /~~([^~\n]+)~~/g, "cm-md-strikethrough", 2, 2, syntaxMarkers);
-    addInlineMatches(builder, line, cursor, /`([^`\n]+)`/g, "cm-md-inline-code", 1, 1, syntaxMarkers);
+    addInlineMatches(decorations2, line, cursor, /\*\*([^*\n]+)\*\*/g, "cm-md-bold", 2, 2, syntaxMarkers);
+    addInlineMatches(decorations2, line, cursor, /__([^_\n]+)__/g, "cm-md-bold", 2, 2, syntaxMarkers);
+    addInlineMatches(decorations2, line, cursor, /(?<!\*)_([^_\n]+)_/g, "cm-md-italic", 1, 1, syntaxMarkers);
+    addInlineMatches(decorations2, line, cursor, /(?<!\*)\*([^*\n]+)\*/g, "cm-md-italic", 1, 1, syntaxMarkers);
+    addInlineMatches(decorations2, line, cursor, /~~([^~\n]+)~~/g, "cm-md-strikethrough", 2, 2, syntaxMarkers);
+    addInlineMatches(decorations2, line, cursor, /`([^`\n]+)`/g, "cm-md-inline-code", 1, 1, syntaxMarkers);
     return inFence;
   }
-  function addInlineMatches(builder, line, cursor, regex, contentClass, openLength, closeLength, syntaxMarkers) {
+  function addInlineMatches(decorations2, line, cursor, regex, contentClass, openLength, closeLength, syntaxMarkers) {
     for (const match2 of line.text.matchAll(regex)) {
       const start2 = line.from + match2.index;
       const end2 = start2 + match2[0].length;
       const contentStart = start2 + openLength;
       const contentEnd = end2 - closeLength;
       const cursorInside = cursor >= start2 && cursor <= end2;
-      builder.add(start2, contentStart, syntaxMark(cursorInside, syntaxMarkers));
-      builder.add(contentStart, contentEnd, classMark(contentClass));
-      builder.add(contentEnd, end2, syntaxMark(cursorInside, syntaxMarkers));
+      addDecoration(decorations2, start2, contentStart, syntaxMark(cursorInside, syntaxMarkers));
+      addDecoration(decorations2, contentStart, contentEnd, classMark(contentClass));
+      addDecoration(decorations2, contentEnd, end2, syntaxMark(cursorInside, syntaxMarkers));
     }
   }
-  function addLeadingWhitespace(builder, line, length) {
-    if (length > 0) builder.add(line.from, line.from + length, classMark("cm-md-indent"));
+  function addLeadingWhitespace(decorations2, line, length) {
+    if (length > 0) addDecoration(decorations2, line.from, line.from + length, classMark("cm-md-indent"));
   }
   function isTableLike(text5) {
     const trimmed = text5.trim();
     return trimmed.includes("|") && trimmed.length > 1;
   }
-  function addTableMarks(builder, line) {
+  function addTableMarks(decorations2, line) {
     for (let offset = 0; offset < line.text.length; offset += 1) {
       if (line.text[offset] === "|") {
-        builder.add(line.from + offset, line.from + offset + 1, classMark("cm-md-table-delimiter"));
+        addDecoration(decorations2, line.from + offset, line.from + offset + 1, classMark("cm-md-table-delimiter"));
       }
     }
     if (/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line.text)) {
-      builder.add(line.from, line.to, classMark("cm-md-table-rule"));
+      addDecoration(decorations2, line.from, line.to, classMark("cm-md-table-rule"));
     }
+  }
+  function addDecoration(decorations2, from3, to, decoration) {
+    if (to < from3) return;
+    decorations2.push(decoration.range(from3, to));
   }
   function isInsideFenceBefore(doc2, position) {
     let inFence = false;
@@ -62122,10 +62125,6 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
   }
 
   // src/codemirror-entry.js
-  var wrapCompartment = new Compartment();
-  var gutterCompartment = new Compartment();
-  var zoomCompartment = new Compartment();
-  var displayCompartment = new Compartment();
   var mdbTheme = EditorView.theme(
     {
       "&": {
@@ -62370,6 +62369,10 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
   function createMarkdownEditor(options) {
     const parent = options.parent;
     let applyingExternalUpdate = false;
+    const wrapCompartment = new Compartment();
+    const gutterCompartment = new Compartment();
+    const zoomCompartment = new Compartment();
+    const displayCompartment = new Compartment();
     const view = new EditorView({
       parent,
       state: EditorState.create({

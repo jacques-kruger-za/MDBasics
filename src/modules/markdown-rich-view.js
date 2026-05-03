@@ -1,4 +1,3 @@
-import { RangeSetBuilder } from "@codemirror/state";
 import { Decoration, ViewPlugin } from "@codemirror/view";
 
 const headingLine = Decoration.line({ class: "cm-md-heading-line" });
@@ -37,7 +36,7 @@ export function markdownRichView(options = {}) {
 }
 
 function buildDecorations(view, syntaxMarkers) {
-  const builder = new RangeSetBuilder();
+  const decorations = [];
   const cursor = view.state.selection.main.head;
   let inFence = isInsideFenceBefore(view.state.doc, view.visibleRanges[0]?.from || 0);
 
@@ -45,75 +44,75 @@ function buildDecorations(view, syntaxMarkers) {
     let pos = from;
     while (pos <= to) {
       const line = view.state.doc.lineAt(pos);
-      inFence = decorateLine(builder, line, cursor, inFence, syntaxMarkers);
+      inFence = decorateLine(decorations, line, cursor, inFence, syntaxMarkers);
       if (line.to + 1 > to) break;
       pos = line.to + 1;
     }
   }
 
-  return builder.finish();
+  return Decoration.set(decorations, true);
 }
 
-function decorateLine(builder, line, cursor, inFence, syntaxMarkers) {
+function decorateLine(decorations, line, cursor, inFence, syntaxMarkers) {
   const text = line.text;
   const fence = text.match(/^(\s*)(`{3,}|~{3,})(.*)$/);
 
   if (fence) {
-    builder.add(line.from, line.from, codeLine);
-    addLeadingWhitespace(builder, line, fence[1].length);
-    builder.add(line.from + fence[1].length, line.from + fence[1].length + fence[2].length, classMark("cm-md-code-fence"));
-    if (fence[3]) builder.add(line.from + fence[1].length + fence[2].length, line.to, classMark("cm-md-code-info"));
+    addDecoration(decorations, line.from, line.from, codeLine);
+    addLeadingWhitespace(decorations, line, fence[1].length);
+    addDecoration(decorations, line.from + fence[1].length, line.from + fence[1].length + fence[2].length, classMark("cm-md-code-fence"));
+    if (fence[3]) addDecoration(decorations, line.from + fence[1].length + fence[2].length, line.to, classMark("cm-md-code-info"));
     return !inFence;
   }
 
   if (inFence) {
-    builder.add(line.from, line.from, codeLine);
-    if (line.length) builder.add(line.from, line.to, classMark("cm-md-code-content"));
+    addDecoration(decorations, line.from, line.from, codeLine);
+    if (line.length) addDecoration(decorations, line.from, line.to, classMark("cm-md-code-content"));
     return inFence;
   }
 
   const heading = text.match(/^(#{1,6})(\s+)(.*)$/);
   if (heading) {
-    builder.add(line.from, line.from, headingLine);
-    builder.add(line.from, line.from + heading[1].length, classMark("cm-md-heading-marker"));
+    addDecoration(decorations, line.from, line.from, headingLine);
+    addDecoration(decorations, line.from, line.from + heading[1].length, classMark("cm-md-heading-marker"));
     const level = Math.min(6, heading[1].length);
-    builder.add(line.from + heading[1].length + heading[2].length, line.to, classMark(`cm-md-heading cm-md-heading-${level}`));
+    addDecoration(decorations, line.from + heading[1].length + heading[2].length, line.to, classMark(`cm-md-heading cm-md-heading-${level}`));
   }
 
   const quote = text.match(/^(\s*>+\s?)(.*)$/);
   if (quote) {
-    builder.add(line.from, line.from, quoteLine);
-    builder.add(line.from, line.from + quote[1].length, classMark("cm-md-quote-marker"));
-    if (quote[2]) builder.add(line.from + quote[1].length, line.to, classMark("cm-md-quote-content"));
+    addDecoration(decorations, line.from, line.from, quoteLine);
+    addDecoration(decorations, line.from, line.from + quote[1].length, classMark("cm-md-quote-marker"));
+    if (quote[2]) addDecoration(decorations, line.from + quote[1].length, line.to, classMark("cm-md-quote-content"));
   }
 
   const list = text.match(/^(\s*)([-+*]|\d+[.)])(\s+)(.*)$/);
   if (list) {
-    addLeadingWhitespace(builder, line, list[1].length);
+    addLeadingWhitespace(decorations, line, list[1].length);
     const markerStart = line.from + list[1].length;
-    builder.add(markerStart, markerStart + list[2].length, classMark("cm-md-list-marker"));
+    addDecoration(decorations, markerStart, markerStart + list[2].length, classMark("cm-md-list-marker"));
   }
 
   if (isTableLike(text)) {
-    builder.add(line.from, line.from, tableLine);
-    addTableMarks(builder, line);
+    addDecoration(decorations, line.from, line.from, tableLine);
+    addTableMarks(decorations, line);
   }
 
   if (/^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/.test(text)) {
-    builder.add(line.from, line.from, thematicBreakLine);
-    builder.add(line.from, line.to, classMark("cm-md-thematic-break"));
+    addDecoration(decorations, line.from, line.from, thematicBreakLine);
+    addDecoration(decorations, line.from, line.to, classMark("cm-md-thematic-break"));
   }
 
-  addInlineMatches(builder, line, cursor, /\*\*([^*\n]+)\*\*/g, "cm-md-bold", 2, 2, syntaxMarkers);
-  addInlineMatches(builder, line, cursor, /__([^_\n]+)__/g, "cm-md-bold", 2, 2, syntaxMarkers);
-  addInlineMatches(builder, line, cursor, /(?<!\*)_([^_\n]+)_/g, "cm-md-italic", 1, 1, syntaxMarkers);
-  addInlineMatches(builder, line, cursor, /(?<!\*)\*([^*\n]+)\*/g, "cm-md-italic", 1, 1, syntaxMarkers);
-  addInlineMatches(builder, line, cursor, /~~([^~\n]+)~~/g, "cm-md-strikethrough", 2, 2, syntaxMarkers);
-  addInlineMatches(builder, line, cursor, /`([^`\n]+)`/g, "cm-md-inline-code", 1, 1, syntaxMarkers);
+  addInlineMatches(decorations, line, cursor, /\*\*([^*\n]+)\*\*/g, "cm-md-bold", 2, 2, syntaxMarkers);
+  addInlineMatches(decorations, line, cursor, /__([^_\n]+)__/g, "cm-md-bold", 2, 2, syntaxMarkers);
+  addInlineMatches(decorations, line, cursor, /(?<!\*)_([^_\n]+)_/g, "cm-md-italic", 1, 1, syntaxMarkers);
+  addInlineMatches(decorations, line, cursor, /(?<!\*)\*([^*\n]+)\*/g, "cm-md-italic", 1, 1, syntaxMarkers);
+  addInlineMatches(decorations, line, cursor, /~~([^~\n]+)~~/g, "cm-md-strikethrough", 2, 2, syntaxMarkers);
+  addInlineMatches(decorations, line, cursor, /`([^`\n]+)`/g, "cm-md-inline-code", 1, 1, syntaxMarkers);
   return inFence;
 }
 
-function addInlineMatches(builder, line, cursor, regex, contentClass, openLength, closeLength, syntaxMarkers) {
+function addInlineMatches(decorations, line, cursor, regex, contentClass, openLength, closeLength, syntaxMarkers) {
   for (const match of line.text.matchAll(regex)) {
     const start = line.from + match.index;
     const end = start + match[0].length;
@@ -121,14 +120,14 @@ function addInlineMatches(builder, line, cursor, regex, contentClass, openLength
     const contentEnd = end - closeLength;
     const cursorInside = cursor >= start && cursor <= end;
 
-    builder.add(start, contentStart, syntaxMark(cursorInside, syntaxMarkers));
-    builder.add(contentStart, contentEnd, classMark(contentClass));
-    builder.add(contentEnd, end, syntaxMark(cursorInside, syntaxMarkers));
+    addDecoration(decorations, start, contentStart, syntaxMark(cursorInside, syntaxMarkers));
+    addDecoration(decorations, contentStart, contentEnd, classMark(contentClass));
+    addDecoration(decorations, contentEnd, end, syntaxMark(cursorInside, syntaxMarkers));
   }
 }
 
-function addLeadingWhitespace(builder, line, length) {
-  if (length > 0) builder.add(line.from, line.from + length, classMark("cm-md-indent"));
+function addLeadingWhitespace(decorations, line, length) {
+  if (length > 0) addDecoration(decorations, line.from, line.from + length, classMark("cm-md-indent"));
 }
 
 function isTableLike(text) {
@@ -136,15 +135,20 @@ function isTableLike(text) {
   return trimmed.includes("|") && trimmed.length > 1;
 }
 
-function addTableMarks(builder, line) {
+function addTableMarks(decorations, line) {
   for (let offset = 0; offset < line.text.length; offset += 1) {
     if (line.text[offset] === "|") {
-      builder.add(line.from + offset, line.from + offset + 1, classMark("cm-md-table-delimiter"));
+      addDecoration(decorations, line.from + offset, line.from + offset + 1, classMark("cm-md-table-delimiter"));
     }
   }
   if (/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line.text)) {
-    builder.add(line.from, line.to, classMark("cm-md-table-rule"));
+    addDecoration(decorations, line.from, line.to, classMark("cm-md-table-rule"));
   }
+}
+
+function addDecoration(decorations, from, to, decoration) {
+  if (to < from) return;
+  decorations.push(decoration.range(from, to));
 }
 
 function isInsideFenceBefore(doc, position) {

@@ -20,11 +20,6 @@ import { bracketMatching, foldGutter, foldKeymap, indentOnInput, syntaxHighlight
 import * as markdownCommands from "./modules/markdown-commands.js";
 import { markdownRichView } from "./modules/markdown-rich-view.js";
 
-const wrapCompartment = new Compartment();
-const gutterCompartment = new Compartment();
-const zoomCompartment = new Compartment();
-const displayCompartment = new Compartment();
-
 const mdbTheme = EditorView.theme(
   {
     "&": {
@@ -283,6 +278,10 @@ function editorDisplayRules(editorStyle, syntaxMarkers) {
 function createMarkdownEditor(options) {
   const parent = options.parent;
   let applyingExternalUpdate = false;
+  const wrapCompartment = new Compartment();
+  const gutterCompartment = new Compartment();
+  const zoomCompartment = new Compartment();
+  const displayCompartment = new Compartment();
 
   const view = new EditorView({
     parent,
