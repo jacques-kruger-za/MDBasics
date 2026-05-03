@@ -1,3 +1,17 @@
+## 2026-05-03
+
+### Changes
+- Started the visual-richness implementation surface with persisted settings for app display variants, editor Markdown style, preview/export style, density, syntax-marker visibility, and editor/preview fonts.
+- Added first-pass CSS behavior for display variants, density presets, editor representation profiles, syntax-marker modes, and preview/export presentation profiles while keeping the current native compact/clean/document defaults.
+- Fixed visual-richness settings wiring by normalizing persisted option values, making selects clearer, separating workspace chrome from topbar chrome, and ensuring display/accent settings update the semantic shell tokens the app actually paints from.
+- Moved app theme definitions onto explicit theme classes, added per-theme default accent colors, preserved custom accent overrides, and made app-menu theme/glass toggles persist through settings instead of directly mutating DOM classes.
+- Expanded each app theme into a full semantic shell map covering topbar, workspace, tabs, document pane, action strip, action pane, inspector, status strip, popups, controls, hairlines, and foreground text/muted/icon colors.
+- Reworked theme wiring toward a common editor-app model: added Obsidian-style background/text/interactive/code/table/blockquote variables, mapped MDBasics shell aliases onto them, and made CodeMirror plus preview surfaces consume the same theme-owned document tokens.
+
+### Health Checks
+- Ran `npm run verify`.
+- Ran `git diff --check`.
+
 ## 2026-05-02
 
 ### Changes

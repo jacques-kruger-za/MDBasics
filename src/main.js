@@ -9,7 +9,13 @@ const settingsFileName = "settings.json";
 const defaultSettings = {
   theme: "dark",
   accentColor: "#68d8c1",
+  accentMode: "theme",
   glass: false,
+  appDisplay: "native-compact",
+  editorStyle: "clean",
+  previewStyle: "document",
+  density: "comfortable",
+  syntaxMarkers: "fade",
   editorFont: "Cascadia Code",
   previewFont: "Segoe UI",
   showFormattingToolbar: false,

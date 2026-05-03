@@ -5,7 +5,7 @@ Rework MDBasics around a stable native-feeling shell, persistent settings, alway
 
 ## Implementation Tracker
 
-Last updated: 2026-05-02
+Last updated: 2026-05-03
 
 ### Completed In Current Foundation Build
 - Native-feeling shell baseline: app-icon menu, top tab strip, share/export entry point, inspector toggle, action strip, status strip, shell hairlines, and native window-control alignment.
@@ -22,6 +22,7 @@ Last updated: 2026-05-02
 - CodeMirror 6 first pass: Code panes now mount CodeMirror through a bundled adapter, preserve open/edit/preview/split-pane document state, use CodeMirror gutters for line numbers, and keep the existing Markdown edit tricks routed through the adapter.
 - Official `@codemirror/lang-markdown` is now the authoritative Markdown baseline: parser, fenced-code language support, Markdown keymap, list/blockquote continuation, and markup deletion are enabled explicitly before MDBasics custom fallbacks.
 - Added CodeMirror-native Markdown modules: `markdown-commands.js` owns editor transactions for inline/line edits, and `markdown-rich-view.js` owns visual Markdown decorations for bold, italic, headings, inline code, and syntax-marker fading.
+- Visual richness first pass: Settings now exposes app display variants, editor Markdown style, preview/export style, density, syntax-marker visibility, editor font, and preview/export font; CSS classes make each profile visibly affect the shell, editor, or preview while preserving the current default look.
 - Build baseline: Windows installer builds successfully as `dist/MDBasics-0.1.2-Setup-x64.exe`.
 
 ### Partially Implemented / Needs Hardening
@@ -30,6 +31,7 @@ Last updated: 2026-05-02
 - Per-file state persists zoom, layout, pane views, active pane, and inspector state by path; last active tab/window restore is not yet complete.
 - Formatting toolbar applies basic Markdown edits, but it does not yet reflect active formatting state; that depends on CodeMirror syntax/state awareness.
 - Line numbers are stable logical line numbers only. Wrapped-line alignment remains a known bug under aggressive wrapping, zoom, pane resize, and window resize.
+- Visual richness profiles are first-pass CSS/settings surfaces. They need visual tuning, screenshot review, and fuller CodeMirror decorations for block quotes, lists, tables, horizontal rules, and fenced code blocks.
 
 ### Remaining Work Queue
 1. Continue shrinking renderer compatibility fallbacks as CodeMirror command coverage grows.

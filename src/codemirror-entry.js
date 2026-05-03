@@ -23,6 +23,7 @@ import { markdownRichView } from "./modules/markdown-rich-view.js";
 const wrapCompartment = new Compartment();
 const gutterCompartment = new Compartment();
 const zoomCompartment = new Compartment();
+const displayCompartment = new Compartment();
 
 const mdbTheme = EditorView.theme(
   {
@@ -117,6 +118,168 @@ function zoomExtension(fontSize) {
   });
 }
 
+function editorDisplayExtension(options = {}) {
+  const editorStyle = ["none", "clean", "obsidian", "vscode", "minimal-writer", "technical"].includes(options.editorStyle)
+    ? options.editorStyle
+    : "clean";
+  const syntaxMarkers = ["show", "fade", "hide"].includes(options.syntaxMarkers) ? options.syntaxMarkers : "fade";
+  if (editorStyle === "none") {
+    return [
+      EditorView.theme({
+        ".cm-md-heading, .cm-md-bold, .cm-md-italic, .cm-md-strikethrough, .cm-md-inline-code, .cm-md-code-content, .cm-md-quote-content": {
+          font: "inherit",
+          color: "inherit",
+          backgroundColor: "transparent",
+          border: "0",
+          padding: "0",
+          textDecoration: "inherit"
+        },
+        ".cm-md-syntax-muted, .cm-md-syntax-hidden, .cm-md-syntax-visible": {
+          opacity: "1",
+          color: "inherit"
+        }
+      })
+    ];
+  }
+
+  return [markdownRichView({ syntaxMarkers }), EditorView.theme(editorDisplayRules(editorStyle, syntaxMarkers))];
+}
+
+function editorDisplayRules(editorStyle, syntaxMarkers) {
+  const hiddenOpacity = syntaxMarkers === "hide" || editorStyle === "minimal-writer" ? "0.035" : "0.16";
+  const visibleMarker = syntaxMarkers === "show" || editorStyle === "vscode" || editorStyle === "technical";
+  const rules = {
+    ".cm-md-syntax-visible, .cm-md-syntax-visible *": {
+      color: "var(--muted)",
+      opacity: "1"
+    },
+    ".cm-md-syntax-muted, .cm-md-syntax-muted *": {
+      color: "color-mix(in srgb, var(--muted) 70%, transparent)",
+      opacity: visibleMarker ? "1" : "0.72"
+    },
+    ".cm-md-syntax-hidden, .cm-md-syntax-hidden *": {
+      color: "color-mix(in srgb, var(--muted) 54%, transparent)",
+      opacity: visibleMarker ? "1" : hiddenOpacity
+    },
+    ".cm-md-indent": {
+      opacity: "0.55"
+    },
+    ".cm-md-bold, .cm-md-bold *": {
+      fontWeight: "760",
+      color: "color-mix(in srgb, var(--text-normal) 90%, var(--interactive-accent))"
+    },
+    ".cm-md-italic, .cm-md-italic *": {
+      fontStyle: "italic",
+      color: "color-mix(in srgb, var(--text-normal) 92%, var(--interactive-accent))"
+    },
+    ".cm-md-strikethrough, .cm-md-strikethrough *": {
+      textDecoration: "line-through",
+      color: "color-mix(in srgb, var(--text-normal) 76%, var(--text-muted))"
+    },
+    ".cm-md-inline-code, .cm-md-inline-code *": {
+      padding: "0 3px",
+      borderRadius: "4px",
+      backgroundColor: "var(--code-background)",
+      color: "color-mix(in srgb, var(--interactive-accent) 72%, var(--text-normal))",
+      fontFamily: "var(--editor-font)"
+    },
+    ".cm-md-heading-line": {
+      color: "var(--text-normal)"
+    },
+    ".cm-md-heading-marker, .cm-md-heading-marker *": {
+      color: "color-mix(in srgb, var(--text-muted) 50%, transparent)"
+    },
+    ".cm-md-heading, .cm-md-heading *": {
+      fontWeight: "780",
+      color: "var(--text-normal)"
+    },
+    ".cm-md-heading-1, .cm-md-heading-1 *": {
+      fontSize: "1.55em"
+    },
+    ".cm-md-heading-2, .cm-md-heading-2 *": {
+      fontSize: "1.32em"
+    },
+    ".cm-md-heading-3, .cm-md-heading-3 *": {
+      fontSize: "1.16em"
+    },
+    ".cm-md-quote-line": {
+      backgroundColor: "color-mix(in srgb, var(--interactive-accent) 4%, transparent)"
+    },
+    ".cm-md-quote-marker, .cm-md-quote-marker *": {
+      color: "var(--interactive-accent)",
+      fontWeight: "700"
+    },
+    ".cm-md-quote-content, .cm-md-quote-content *": {
+      color: "color-mix(in srgb, var(--text-normal) 78%, var(--text-muted))"
+    },
+    ".cm-md-list-marker, .cm-md-list-marker *": {
+      color: "var(--interactive-accent)",
+      fontWeight: "720"
+    },
+    ".cm-md-code-line": {
+      backgroundColor: "color-mix(in srgb, var(--code-background) 70%, transparent)"
+    },
+    ".cm-md-code-fence, .cm-md-code-fence *, .cm-md-code-info, .cm-md-code-info *": {
+      color: "color-mix(in srgb, var(--interactive-accent) 64%, var(--text-muted))"
+    },
+    ".cm-md-code-content, .cm-md-code-content *": {
+      color: "color-mix(in srgb, var(--text-normal) 82%, var(--text-muted))"
+    },
+    ".cm-md-table-line": {
+      backgroundColor: "color-mix(in srgb, var(--table-header-background) 40%, transparent)"
+    },
+    ".cm-md-table-delimiter, .cm-md-table-delimiter *": {
+      color: "color-mix(in srgb, var(--interactive-accent) 66%, var(--text-muted))"
+    },
+    ".cm-md-table-rule, .cm-md-table-rule *": {
+      color: "color-mix(in srgb, var(--text-muted) 70%, transparent)"
+    },
+    ".cm-md-thematic-break, .cm-md-thematic-break *": {
+      color: "color-mix(in srgb, var(--interactive-accent) 58%, var(--text-muted))"
+    }
+  };
+
+  if (editorStyle === "obsidian") {
+    rules[".cm-md-heading, .cm-md-heading *"] = {
+      fontWeight: "760",
+      color: "color-mix(in srgb, var(--interactive-accent) 28%, var(--text-normal))"
+    };
+    rules[".cm-md-inline-code, .cm-md-inline-code *"].backgroundColor = "color-mix(in srgb, var(--interactive-accent) 14%, transparent)";
+    rules[".cm-md-inline-code, .cm-md-inline-code *"].border = "1px solid color-mix(in srgb, var(--interactive-accent) 18%, transparent)";
+  }
+
+  if (editorStyle === "vscode") {
+    rules[".cm-md-bold, .cm-md-bold *"].color = "#dcdcaa";
+    rules[".cm-md-italic, .cm-md-italic *"].color = "#ce9178";
+    rules[".cm-md-inline-code, .cm-md-inline-code *"].color = "#4ec9b0";
+    rules[".cm-md-heading, .cm-md-heading *"].color = "color-mix(in srgb, #569cd6 72%, var(--text-normal))";
+    rules[".cm-md-code-content, .cm-md-code-content *"].color = "#d4d4d4";
+  }
+
+  if (editorStyle === "minimal-writer") {
+    rules[".cm-md-heading, .cm-md-heading *"] = {
+      fontFamily: "var(--preview-font)",
+      fontWeight: "680",
+      color: "var(--text-normal)"
+    };
+    rules[".cm-md-quote-line"].backgroundColor = "transparent";
+    rules[".cm-md-table-line"].backgroundColor = "transparent";
+    rules[".cm-md-code-line"].backgroundColor = "transparent";
+  }
+
+  if (editorStyle === "technical") {
+    rules[".cm-gutters"] = {
+      backgroundColor: "color-mix(in srgb, var(--surface-raised) 22%, transparent)",
+      borderRight: "1px solid var(--subtle-hairline)"
+    };
+    rules[".cm-md-inline-code, .cm-md-inline-code *"].border = "1px solid color-mix(in srgb, var(--interactive-accent) 22%, var(--line))";
+    rules[".cm-md-inline-code, .cm-md-inline-code *"].backgroundColor = "color-mix(in srgb, var(--app-bg) 66%, var(--interactive-accent) 6%)";
+    rules[".cm-md-table-line"].backgroundColor = "color-mix(in srgb, var(--interactive-accent) 6%, transparent)";
+  }
+
+  return rules;
+}
+
 function createMarkdownEditor(options) {
   const parent = options.parent;
   let applyingExternalUpdate = false;
@@ -139,7 +302,6 @@ function createMarkdownEditor(options) {
         indentOnInput(),
         bracketMatching(),
         closeBrackets({ brackets: ["(", "[", "{", "'", "\""] }),
-        markdownRichView(),
         EditorView.domEventHandlers({
           keydown: (event) => options.onKeydown?.(event) === true
         }),
@@ -156,6 +318,10 @@ function createMarkdownEditor(options) {
         wrapCompartment.of(lineWrappingExtension(options.lineWrapping !== false)),
         gutterCompartment.of(lineNumberExtension(Boolean(options.lineNumbers))),
         zoomCompartment.of(zoomExtension(options.fontSize)),
+        displayCompartment.of(editorDisplayExtension({
+          editorStyle: options.editorStyle,
+          syntaxMarkers: options.syntaxMarkers
+        })),
         EditorView.updateListener.of((update) => {
           if (applyingExternalUpdate) return;
           if (update.docChanged) options.onChange?.(getApi().getValue());
@@ -268,6 +434,9 @@ function createMarkdownEditor(options) {
       },
       setFontSize(fontSize) {
         view.dispatch({ effects: zoomCompartment.reconfigure(zoomExtension(fontSize)) });
+      },
+      setEditorDisplay(options = {}) {
+        view.dispatch({ effects: displayCompartment.reconfigure(editorDisplayExtension(options)) });
       }
     };
 

@@ -1,135 +1,247 @@
 :root {
   color-scheme: dark;
-  /* Shell theme token map:
-     app-window -> outer frame, app-chrome -> topbar/workspace chrome,
-     document-surface -> active tab and open document canvas,
-     inactive-tab -> background tabs, activity-strip -> left icon rail,
-     inspector-pane -> right inspector, status-strip -> bottom info row.
-     Editor syntax and gutter tokens stay deferred to the CodeMirror pass. */
-  --app-bg: #0e1013;
-  --surface-main: rgba(18, 21, 25, 0.94);
-  --surface-raised: rgba(27, 31, 36, 0.96);
-  --surface-muted: rgba(255, 255, 255, 0.035);
-  --surface-inspector: rgba(18, 21, 25, 0.94);
-  --text-main: #f4f0e8;
-  --text-muted: #9ba0a8;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --resize-hairline: color-mix(in srgb, var(--border-subtle) 78%, transparent);
+  /* Theme import contract:
+     External Obsidian-like CSS should map to --background-*,
+     --text-*, --interactive-* and document tokens.
+     VS Code JSON themes should be adapted into the same contract.
+     MDBasics components consume only the app aliases below. */
   --accent: #68d8c1;
   --accent-2: #f7c873;
   --danger: #ef7d8f;
-  --selection-bg: rgba(104, 216, 193, 0.26);
   --activity-pane-width: 280px;
   --inspector-width: 360px;
+  --pane-header-height: 38px;
+  --pane-header-left: 51px;
+  --editor-pad-top: 8px;
+  --editor-pad-right: 36px;
+  --editor-pad-bottom: 44px;
+  --editor-pad-left: 13px;
+  --preview-max-width: 980px;
+  --preview-line-height: 1.62;
+  --preview-block-gap: 16px;
   --editor-font: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --preview-font: "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
-  --tab-bg: color-mix(in srgb, var(--surface-main) 78%, var(--surface-raised) 22%);
-  --open-doc-bg: color-mix(in srgb, var(--tab-bg) 97.5%, var(--text-main) 2.5%);
-  --hairline: var(--open-doc-bg);
-  --bg: var(--app-bg);
-  --surface: var(--surface-main);
-  --surface-strong: var(--surface-raised);
-  --text: var(--text-main);
-  --muted: var(--text-muted);
-  --line: var(--border-subtle);
-  --app-window-bg: var(--app-bg);
-  --app-chrome-bg: var(--surface);
-  --workspace-bg: var(--surface);
-  --floating-bg: var(--surface);
-  --document-surface-bg: var(--open-doc-bg);
-  --inactive-tab-bg: var(--tab-bg);
-  --active-tab-bg: var(--open-doc-bg);
-  --activity-strip-bg: color-mix(in srgb, var(--surface-main) 94%, var(--surface-raised));
-  --activity-pane-bg: var(--surface);
-  --inspector-pane-bg: var(--surface-inspector);
-  --status-strip-bg: color-mix(in srgb, var(--surface-raised) 76%, var(--surface-main));
-  --control-cluster-bg: color-mix(in srgb, var(--surface-main) 48%, transparent);
-  --shell-hairline: var(--hairline);
-  --subtle-hairline: color-mix(in srgb, var(--hairline) 70%, transparent);
-  --resize-line: var(--resize-hairline);
-  --hover-tint: color-mix(in srgb, var(--accent) 4%, transparent);
-  --hover-subtle-tint: color-mix(in srgb, var(--accent) 3%, transparent);
-  --active-tint: color-mix(in srgb, var(--accent) 7%, transparent);
-  --active-strong-tint: color-mix(in srgb, var(--accent) 12%, transparent);
-  --hover-border: color-mix(in srgb, var(--accent) 18%, var(--line));
-  --accent-soft: color-mix(in srgb, var(--accent) 64%, var(--muted));
-  --accent-mark-bg: color-mix(in srgb, var(--accent) 18%, transparent);
-  --accent-glow-ring: color-mix(in srgb, var(--accent) 30%, transparent);
-  --accent-glow-shadow: color-mix(in srgb, var(--accent) 74%, transparent);
+  --mdb-theme-base: #121519;
+  --mdb-theme-elevated: #1b1f24;
+  --mdb-theme-text: #f4f0e8;
+  --mdb-theme-muted: #9ba0a8;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
   font-family: "Segoe UI", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-body.light {
+body.light,
+body.theme-light,
+body.theme-github-light,
+body.theme-catppuccin-latte {
   color-scheme: light;
-  --app-bg: #f6f5f1;
-  --surface-main: rgba(255, 255, 253, 0.92);
-  --surface-raised: rgba(255, 255, 253, 0.96);
-  --surface-muted: rgba(30, 34, 40, 0.035);
-  --surface-inspector: rgba(255, 255, 253, 0.94);
-  --text-main: #202124;
-  --text-muted: #666b74;
-  --border-subtle: rgba(30, 34, 40, 0.12);
-  --resize-hairline: color-mix(in srgb, var(--border-subtle) 72%, transparent);
-  --accent: #0c8f7d;
+}
+
+body.theme-dark {
+  --mdb-theme-base: #121519;
+  --mdb-theme-elevated: #1b1f24;
+  --mdb-theme-text: #f4f0e8;
+  --mdb-theme-muted: #9ba0a8;
+  --accent-2: #f7c873;
+}
+
+body.theme-light {
+  --mdb-theme-base: #f6f5f1;
+  --mdb-theme-elevated: #ffffff;
+  --mdb-theme-text: #202124;
+  --mdb-theme-muted: #666b74;
   --accent-2: #a45d00;
-  --selection-bg: rgba(12, 143, 125, 0.2);
-  --hairline: var(--open-doc-bg);
   --shadow: 0 24px 80px rgba(38, 42, 48, 0.14);
 }
 
+body.theme-vscode-dark {
+  --mdb-theme-base: #1e1e1e;
+  --mdb-theme-elevated: #252526;
+  --mdb-theme-text: #d4d4d4;
+  --mdb-theme-muted: #858585;
+}
+
+body.theme-github-light {
+  --mdb-theme-base: #ffffff;
+  --mdb-theme-elevated: #f6f8fa;
+  --mdb-theme-text: #1f2328;
+  --mdb-theme-muted: #59636e;
+  --shadow: 0 24px 80px rgba(31, 35, 40, 0.12);
+}
+
+body.theme-catppuccin-mocha {
+  --mdb-theme-base: #181825;
+  --mdb-theme-elevated: #1e1e2e;
+  --mdb-theme-text: #cdd6f4;
+  --mdb-theme-muted: #a6adc8;
+  --accent-2: #f9e2af;
+}
+
+body.theme-catppuccin-latte {
+  --mdb-theme-base: #eff1f5;
+  --mdb-theme-elevated: #ffffff;
+  --mdb-theme-text: #4c4f69;
+  --mdb-theme-muted: #6c6f85;
+  --accent-2: #df8e1d;
+  --shadow: 0 24px 80px rgba(76, 79, 105, 0.14);
+}
+
+body.theme-dark,
+body.theme-light,
+body.theme-vscode-dark,
+body.theme-github-light,
+body.theme-catppuccin-mocha,
+body.theme-catppuccin-latte {
+  --interactive-accent: var(--accent);
+  --background-primary: color-mix(in srgb, var(--mdb-theme-base) 97.5%, var(--mdb-theme-text) 2.5%);
+  --background-primary-alt: color-mix(in srgb, var(--background-primary) 94%, var(--mdb-theme-elevated));
+  --background-secondary: var(--mdb-theme-base);
+  --background-secondary-alt: var(--mdb-theme-elevated);
+  --background-modifier-border: color-mix(in srgb, var(--mdb-theme-muted) 24%, transparent);
+  --background-modifier-border-hover: color-mix(in srgb, var(--interactive-accent) 22%, var(--background-modifier-border));
+  --background-modifier-hover: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
+  --background-modifier-active-hover: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  --background-modifier-form-field: color-mix(in srgb, var(--mdb-theme-elevated) 78%, var(--interactive-accent) 4%);
+  --text-normal: var(--mdb-theme-text);
+  --text-muted: var(--mdb-theme-muted);
+  --text-faint: color-mix(in srgb, var(--mdb-theme-muted) 64%, transparent);
+  --text-accent: var(--interactive-accent);
+  --text-accent-hover: color-mix(in srgb, var(--interactive-accent) 78%, var(--text-normal));
+  --text-selection: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  --interactive-normal: color-mix(in srgb, var(--background-secondary-alt) 80%, transparent);
+  --interactive-hover: var(--background-modifier-hover);
+  --interactive-accent-hover: color-mix(in srgb, var(--interactive-accent) 84%, var(--text-normal));
+  --code-background: color-mix(in srgb, var(--background-secondary-alt) 86%, var(--background-primary));
+  --table-header-background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+  --table-border-color: var(--background-modifier-border);
+  --blockquote-border-color: var(--interactive-accent);
+  --blockquote-background-color: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+
+  --app-bg: var(--background-secondary);
+  --surface-main: var(--background-secondary);
+  --surface-raised: var(--background-secondary-alt);
+  --surface-muted: var(--background-modifier-form-field);
+  --surface-inspector: var(--background-secondary-alt);
+  --text-main: var(--text-normal);
+  --border-subtle: var(--background-modifier-border);
+  --selection-bg: var(--text-selection);
+  --tab-bg: var(--background-secondary-alt);
+  --open-doc-bg: var(--background-primary);
+  --hairline: var(--background-modifier-border);
+
+  --app-window-bg: var(--background-secondary);
+  --app-chrome-bg: var(--background-secondary);
+  --workspace-bg: var(--background-secondary);
+  --floating-bg: var(--background-secondary-alt);
+  --document-surface-bg: var(--background-primary);
+  --inactive-tab-bg: var(--background-secondary-alt);
+  --active-tab-bg: var(--background-primary);
+  --activity-strip-bg: var(--background-secondary);
+  --activity-pane-bg: var(--background-secondary-alt);
+  --inspector-pane-bg: var(--background-secondary-alt);
+  --status-strip-bg: var(--background-secondary);
+  --app-control-bg: var(--interactive-normal);
+  --app-input-bg: var(--background-modifier-form-field);
+  --app-text: var(--text-normal);
+  --app-text-muted: var(--text-muted);
+  --app-text-subtle: var(--text-faint);
+  --app-icon: var(--text-muted);
+  --app-hairline: var(--background-modifier-border);
+  --app-resize-hairline: color-mix(in srgb, var(--background-modifier-border) 78%, transparent);
+
+  --bg: var(--app-window-bg);
+  --surface: var(--background-secondary);
+  --surface-strong: var(--background-secondary-alt);
+  --text: var(--text-normal);
+  --muted: var(--text-muted);
+  --line: var(--background-modifier-border);
+  --shell-hairline: var(--background-modifier-border);
+  --subtle-hairline: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --resize-line: var(--app-resize-hairline);
+  --control-cluster-bg: var(--interactive-normal);
+  --hover-tint: var(--background-modifier-hover);
+  --hover-subtle-tint: color-mix(in srgb, var(--interactive-accent) 4%, transparent);
+  --active-tint: var(--background-modifier-active-hover);
+  --active-strong-tint: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+  --hover-border: var(--background-modifier-border-hover);
+  --accent-soft: color-mix(in srgb, var(--interactive-accent) 64%, var(--text-muted));
+  --accent-mark-bg: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+  --accent-glow-ring: color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+  --accent-glow-shadow: color-mix(in srgb, var(--interactive-accent) 74%, transparent);
+}
+
+/* App display variants tune material behavior; themes still own colour identity. */
+body[data-app-display="glass-workspace"],
 body.glass {
-  --surface: rgba(25, 27, 32, 0.68);
-  --surface-strong: rgba(34, 37, 43, 0.74);
+  --app-window-bg: color-mix(in srgb, var(--background-secondary) 82%, transparent);
+  --app-chrome-bg: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+  --workspace-bg: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+  --floating-bg: color-mix(in srgb, var(--background-secondary-alt) 82%, transparent);
+  --document-surface-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
+  --activity-strip-bg: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+  --activity-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 76%, transparent);
+  --inspector-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 76%, transparent);
+  --status-strip-bg: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+  --shadow: 0 28px 90px rgba(0, 0, 0, 0.28);
 }
 
-body.light.glass {
-  --surface: rgba(255, 255, 253, 0.72);
-  --surface-strong: rgba(247, 247, 243, 0.78);
+body[data-app-display="writer-focus"] {
+  --workspace-bg: var(--document-surface-bg);
+  --app-chrome-bg: color-mix(in srgb, var(--background-secondary) 72%, var(--document-surface-bg));
+  --activity-strip-bg: color-mix(in srgb, var(--background-secondary) 78%, var(--document-surface-bg));
+  --activity-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 82%, var(--document-surface-bg));
+  --inspector-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 80%, var(--document-surface-bg));
+  --status-strip-bg: color-mix(in srgb, var(--document-surface-bg) 86%, var(--background-secondary));
+  --control-cluster-bg: transparent;
+  --hover-tint: color-mix(in srgb, var(--interactive-accent) 2.5%, transparent);
+  --subtle-hairline: color-mix(in srgb, var(--shell-hairline) 44%, transparent);
 }
 
-body[data-theme="vscode-dark"] {
-  --app-bg: #171717;
-  --surface-main: rgba(31, 31, 32, 0.95);
-  --surface-raised: rgba(42, 42, 44, 0.97);
-  --surface-muted: rgba(255, 255, 255, 0.045);
-  --surface-inspector: rgba(37, 37, 38, 0.94);
-  --text-main: #d4d4d4;
-  --text-muted: #858585;
-  --border-subtle: rgba(255, 255, 255, 0.1);
+body[data-app-display="technical-workspace"] {
+  --document-surface-bg: color-mix(in srgb, var(--background-primary) 88%, var(--background-secondary));
+  --app-chrome-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary));
+  --workspace-bg: color-mix(in srgb, var(--background-secondary) 68%, var(--background-primary));
+  --activity-strip-bg: color-mix(in srgb, var(--background-secondary) 92%, var(--background-primary));
+  --activity-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 86%, var(--background-secondary));
+  --inspector-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 90%, var(--background-secondary));
+  --status-strip-bg: color-mix(in srgb, var(--background-secondary-alt) 68%, var(--background-secondary));
+  --shell-hairline: color-mix(in srgb, var(--interactive-accent) 16%, var(--line));
+  --resize-line: color-mix(in srgb, var(--interactive-accent) 24%, var(--line));
+  --hover-tint: color-mix(in srgb, var(--interactive-accent) 7%, transparent);
 }
 
-body[data-theme="github-light"] {
-  --app-bg: #ffffff;
-  --surface-main: rgba(246, 248, 250, 0.95);
-  --surface-raised: rgba(255, 255, 255, 0.98);
-  --surface-muted: rgba(9, 105, 218, 0.055);
-  --surface-inspector: rgba(246, 248, 250, 0.96);
-  --text-main: #1f2328;
-  --text-muted: #59636e;
-  --border-subtle: rgba(31, 35, 40, 0.15);
+body[data-app-display="minimal-paper"] {
+  --document-surface-bg: color-mix(in srgb, var(--background-secondary-alt) 86%, var(--text-normal) 3%);
+  --workspace-bg: var(--document-surface-bg);
+  --app-chrome-bg: color-mix(in srgb, var(--background-secondary) 86%, transparent);
+  --activity-strip-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--document-surface-bg));
+  --activity-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 76%, var(--document-surface-bg));
+  --inspector-pane-bg: color-mix(in srgb, var(--background-secondary-alt) 78%, var(--document-surface-bg));
+  --status-strip-bg: color-mix(in srgb, var(--document-surface-bg) 90%, var(--background-secondary));
+  --control-cluster-bg: transparent;
 }
 
-body[data-theme="catppuccin-mocha"] {
-  --app-bg: #1e1e2e;
-  --surface-main: rgba(30, 30, 46, 0.94);
-  --surface-raised: rgba(49, 50, 68, 0.96);
-  --surface-muted: rgba(203, 166, 247, 0.06);
-  --surface-inspector: rgba(24, 24, 37, 0.94);
-  --text-main: #cdd6f4;
-  --text-muted: #a6adc8;
-  --border-subtle: rgba(205, 214, 244, 0.12);
+body[data-density="compact"] {
+  --pane-header-height: 32px;
+  --pane-header-left: 45px;
+  --editor-pad-top: 6px;
+  --editor-pad-right: 28px;
+  --editor-pad-bottom: 34px;
+  --editor-pad-left: 10px;
+  --preview-max-width: 900px;
+  --preview-line-height: 1.5;
+  --preview-block-gap: 12px;
 }
 
-body[data-theme="catppuccin-latte"] {
-  --app-bg: #eff1f5;
-  --surface-main: rgba(239, 241, 245, 0.95);
-  --surface-raised: rgba(255, 255, 255, 0.98);
-  --surface-muted: rgba(136, 57, 239, 0.055);
-  --surface-inspector: rgba(230, 233, 239, 0.96);
-  --text-main: #4c4f69;
-  --text-muted: #6c6f85;
-  --border-subtle: rgba(76, 79, 105, 0.14);
+body[data-density="spacious"] {
+  --pane-header-height: 46px;
+  --pane-header-left: 58px;
+  --editor-pad-top: 14px;
+  --editor-pad-right: 48px;
+  --editor-pad-bottom: 62px;
+  --editor-pad-left: 20px;
+  --preview-max-width: 1060px;
+  --preview-line-height: 1.75;
+  --preview-block-gap: 22px;
 }
 
 * {
@@ -193,8 +305,13 @@ button:disabled {
 .workspace {
   backdrop-filter: blur(22px) saturate(1.25);
   background: var(--app-chrome-bg);
+  color: var(--text);
   border: 0;
   box-shadow: none;
+}
+
+.workspace {
+  background: var(--workspace-bg);
 }
 
 .floating-surface,
@@ -202,6 +319,7 @@ button:disabled {
 body.activity-visible:not(.activity-pinned) .activity-pane {
   backdrop-filter: blur(22px) saturate(1.25);
   background: var(--floating-bg);
+  color: var(--text);
   border: 1px solid var(--shell-hairline);
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -626,6 +744,7 @@ body.activity-pinned .tabs {
   padding: 8px 4px 4px;
   border-right: 1px solid var(--shell-hairline);
   background: var(--activity-strip-bg);
+  color: var(--muted);
   min-height: 0;
   overflow: hidden;
 }
@@ -678,6 +797,7 @@ body:not(.activity-visible) .activity-bar {
   border: 0;
   border-right: 1px solid var(--shell-hairline);
   background: var(--activity-pane-bg);
+  color: var(--text);
   box-shadow: none;
   overflow: hidden;
 }
@@ -794,13 +914,19 @@ body:not(.activity-visible) .activity-bar {
 .replace-input,
 .settings-select {
   width: 100%;
-  height: 30px;
+  min-width: 0;
+  height: 32px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--surface-muted);
+  background: var(--app-input-bg);
   color: var(--text);
   padding: 0 9px;
   outline: 0;
+}
+
+.settings-select option {
+  background: var(--floating-bg);
+  color: var(--text);
 }
 
 .search-row,
@@ -866,7 +992,8 @@ body.activity-visible .settings-overlay {
   min-height: 0;
   border: 1px solid var(--shell-hairline);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-raised) 86%, transparent);
+  background: color-mix(in srgb, var(--floating-bg) 92%, transparent);
+  color: var(--text);
   backdrop-filter: blur(22px) saturate(1.25);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -929,7 +1056,9 @@ body.activity-visible .settings-overlay {
 
 .settings-row {
   display: grid;
-  gap: 5px;
+  grid-template-columns: minmax(108px, 0.62fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
   color: var(--muted);
   font-size: 12px;
 }
@@ -940,7 +1069,27 @@ body.activity-visible .settings-overlay {
   padding: 2px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: transparent;
+  background: var(--app-input-bg);
+}
+
+.settings-accent-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.settings-accent-control button {
+  height: 30px;
+  padding: 0 9px;
+  border-color: var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-accent-control button:hover {
+  color: var(--accent);
+  background: var(--hover-tint);
 }
 
 .toolbar-group {
@@ -1039,6 +1188,7 @@ body.activity-visible .settings-overlay {
   height: 100%;
   min-height: 0;
   background: var(--document-surface-bg);
+  color: var(--text);
 }
 
 .workspace-surface[hidden] {
@@ -1111,7 +1261,7 @@ body.activity-visible .settings-overlay {
 .pane-body {
   height: 100%;
   min-height: 0;
-  padding-top: 38px;
+  padding-top: var(--pane-header-height);
 }
 
 .pane-header {
@@ -1120,11 +1270,11 @@ body.activity-visible .settings-overlay {
   top: 0;
   left: 0;
   right: 0;
-  height: 38px;
+  height: var(--pane-header-height);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding-left: 51px;
+  padding-left: var(--pane-header-left);
   pointer-events: none;
   opacity: 0.72;
   transition: opacity 120ms ease;
@@ -1146,6 +1296,19 @@ body.activity-visible .settings-overlay {
 .doc-pane:hover .pane-header,
 .doc-pane.active .pane-header {
   opacity: 0.9;
+}
+
+body[data-app-display="writer-focus"] .pane-header {
+  opacity: 0.28;
+}
+
+body[data-app-display="writer-focus"] .doc-pane:hover .pane-header,
+body[data-app-display="writer-focus"] .doc-pane.active .pane-header {
+  opacity: 0.82;
+}
+
+body[data-app-display="technical-workspace"] .doc-pane {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shell-hairline) 70%, transparent);
 }
 
 .pane-menu {
@@ -1224,6 +1387,7 @@ body.activity-visible .settings-overlay {
   height: 100%;
   border-left: 1px solid var(--shell-hairline);
   background: var(--inspector-pane-bg);
+  color: var(--text);
   overflow: hidden;
   position: relative;
 }
@@ -1375,10 +1539,21 @@ body.activity-visible .settings-overlay {
   border: 0;
   outline: 0;
   resize: none;
-  background: transparent;
-  color: var(--text);
+  background: var(--background-primary);
+  color: var(--text-normal);
   overflow: auto;
   scrollbar-gutter: stable;
+}
+
+.code-editor-wrap,
+.code-editor,
+.codemirror-wrap,
+.mdb-codemirror,
+.mdb-codemirror .cm-editor,
+.mdb-codemirror .cm-scroller,
+.pane-preview {
+  background: var(--background-primary) !important;
+  color: var(--text-normal) !important;
 }
 
 .code-editor-wrap {
@@ -1402,7 +1577,7 @@ body.activity-visible .settings-overlay {
 }
 
 .mdb-codemirror {
-  color: var(--text);
+  color: var(--text-normal);
 }
 
 .mdb-codemirror .cm-editor {
@@ -1420,12 +1595,12 @@ body.activity-visible .settings-overlay {
 
 .mdb-codemirror .cm-content {
   min-height: 100%;
-  padding: 8px 36px 44px 13px;
+  padding: var(--editor-pad-top) var(--editor-pad-right) var(--editor-pad-bottom) var(--editor-pad-left);
   caret-color: var(--accent);
 }
 
 .mdb-codemirror .cm-gutters {
-  background: transparent !important;
+  background: var(--background-primary);
   border-right: 0;
   color: color-mix(in srgb, var(--muted) 48%, transparent);
 }
@@ -1448,56 +1623,6 @@ body.activity-visible .settings-overlay {
 .mdb-codemirror .cm-selectionBackground,
 .mdb-codemirror.cm-focused .cm-selectionBackground {
   background: var(--selection-bg);
-}
-
-.mdb-codemirror .cm-md-syntax-muted {
-  color: color-mix(in srgb, var(--muted) 58%, transparent);
-}
-
-.mdb-codemirror .cm-md-syntax-hidden {
-  opacity: 0.12;
-}
-
-.mdb-codemirror .cm-md-bold {
-  font-weight: 750;
-  color: color-mix(in srgb, var(--text) 94%, var(--accent));
-}
-
-.mdb-codemirror .cm-md-italic {
-  font-style: italic;
-  color: color-mix(in srgb, var(--text) 92%, var(--accent));
-}
-
-.mdb-codemirror .cm-md-inline-code {
-  padding: 0 3px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--surface-raised) 56%, transparent);
-  color: color-mix(in srgb, var(--accent) 72%, var(--text));
-}
-
-.mdb-codemirror .cm-md-heading-line {
-  color: var(--text);
-}
-
-.mdb-codemirror .cm-md-heading-marker {
-  color: color-mix(in srgb, var(--muted) 46%, transparent);
-}
-
-.mdb-codemirror .cm-md-heading {
-  font-weight: 780;
-  color: var(--text);
-}
-
-.mdb-codemirror .cm-md-heading-1 {
-  font-size: 1.55em;
-}
-
-.mdb-codemirror .cm-md-heading-2 {
-  font-size: 1.32em;
-}
-
-.mdb-codemirror .cm-md-heading-3 {
-  font-size: 1.16em;
 }
 
 .code-editor-wrap.show-lines {
@@ -1732,15 +1857,17 @@ body.activity-visible .settings-overlay {
 }
 
 .markdown-body {
-  max-width: 980px;
+  max-width: var(--preview-max-width);
   margin: 0 auto;
   width: 100%;
+  line-height: var(--preview-line-height);
+  color: var(--text-normal);
 }
 
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
-  margin: 18px 0;
+  margin: var(--preview-block-gap) 0;
 }
 
 .markdown-body th,
@@ -1751,7 +1878,7 @@ body.activity-visible .settings-overlay {
 }
 
 .markdown-body th {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--table-header-background);
 }
 
 .markdown-body h1,
@@ -1763,23 +1890,24 @@ body.activity-visible .settings-overlay {
 
 .markdown-body h1 {
   font-size: 34px;
-  margin: 8px 0 24px;
+  margin: 8px 0 calc(var(--preview-block-gap) * 1.4);
 }
 
 .markdown-body h2 {
   font-size: 24px;
-  margin-top: 34px;
+  margin-top: calc(var(--preview-block-gap) * 1.9);
 }
 
 .markdown-body p,
 .markdown-body li {
-  color: color-mix(in srgb, var(--text) 88%, var(--muted));
+  color: var(--text-normal);
 }
 
 .markdown-body code {
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--code-background);
+  color: var(--text-normal);
   padding: 2px 5px;
   font-family: "Cascadia Code", Consolas, monospace;
   font-size: 0.92em;
@@ -1788,16 +1916,69 @@ body.activity-visible .settings-overlay {
 .markdown-body pre {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.24);
+  background: var(--code-background);
+  color: var(--text-normal);
   padding: 16px;
   overflow: auto;
 }
 
 .markdown-body blockquote {
   margin-left: 0;
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--blockquote-border-color);
+  background: var(--blockquote-background-color);
   padding-left: 16px;
   color: var(--muted);
+}
+
+body[data-preview-style="github"] .markdown-body {
+  --preview-max-width: 1012px;
+}
+
+body[data-preview-style="github"] .markdown-body table th {
+  background: var(--table-header-background);
+}
+
+body[data-preview-style="report"] .markdown-body {
+  --preview-max-width: 920px;
+}
+
+body[data-preview-style="report"] .markdown-body h1,
+body[data-preview-style="report"] .markdown-body h2 {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.35em;
+}
+
+body[data-preview-style="minimal"] .markdown-body {
+  --preview-max-width: 820px;
+}
+
+body[data-preview-style="minimal"] .markdown-body table,
+body[data-preview-style="minimal"] .markdown-body th,
+body[data-preview-style="minimal"] .markdown-body td,
+body[data-preview-style="minimal"] .markdown-body pre,
+body[data-preview-style="minimal"] .markdown-body code {
+  border-color: transparent;
+}
+
+body[data-preview-style="academic"] .markdown-body {
+  --preview-max-width: 760px;
+  font-family: var(--preview-font);
+}
+
+body[data-preview-style="academic"] .markdown-body p,
+body[data-preview-style="academic"] .markdown-body li {
+  text-align: left;
+}
+
+body[data-preview-style="notion"] .markdown-body {
+  --preview-max-width: 900px;
+}
+
+body[data-preview-style="notion"] .markdown-body blockquote {
+  border-left-width: 4px;
+  background: var(--blockquote-background-color);
+  padding: 10px 14px;
+  border-radius: 6px;
 }
 
 .markdown-body li:has(> input[type="checkbox"]) {

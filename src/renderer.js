@@ -77,7 +77,13 @@
   let appSettings = {
     theme: "dark",
     accentColor: "#68d8c1",
+    accentMode: "theme",
     glass: false,
+    appDisplay: "native-compact",
+    editorStyle: "clean",
+    previewStyle: "document",
+    density: "comfortable",
+    syntaxMarkers: "fade",
     editorFont: "Cascadia Code",
     previewFont: "Segoe UI",
     showFormattingToolbar: false,
@@ -90,6 +96,42 @@
     lastActivityTool: "outline",
     recentFiles: [],
     fileStates: {}
+  };
+
+  const editorFontOptions = ["Cascadia Code", "Cascadia Mono", "Consolas", "Courier New", "Lucida Console", "Segoe UI"];
+  const previewFontOptions = ["Segoe UI", "Arial", "Calibri", "Georgia", "Cambria", "Times New Roman", "Verdana"];
+
+  const settingOptions = {
+    theme: ["dark", "light", "vscode-dark", "github-light", "catppuccin-mocha", "catppuccin-latte"],
+    appDisplay: ["native-compact", "glass-workspace", "writer-focus", "technical-workspace", "minimal-paper"],
+    density: ["compact", "comfortable", "spacious"],
+    editorStyle: ["none", "clean", "obsidian", "vscode", "minimal-writer", "technical"],
+    syntaxMarkers: ["show", "fade", "hide"],
+    previewStyle: ["github", "document", "report", "minimal", "academic", "notion"],
+    editorFont: editorFontOptions,
+    previewFont: previewFontOptions
+  };
+
+  const themeDefaultAccents = {
+    dark: "#68d8c1",
+    light: "#0c8f7d",
+    "vscode-dark": "#4ec9b0",
+    "github-light": "#0969da",
+    "catppuccin-mocha": "#89b4fa",
+    "catppuccin-latte": "#1e66f5"
+  };
+
+  const themeClassNames = settingOptions.theme.map((theme) => `theme-${theme}`);
+
+  const settingFallbacks = {
+    theme: "dark",
+    appDisplay: "native-compact",
+    density: "comfortable",
+    editorStyle: "clean",
+    syntaxMarkers: "fade",
+    previewStyle: "document",
+    editorFont: "Cascadia Code",
+    previewFont: "Segoe UI"
   };
 
   const paneNodes = new Map();
@@ -146,6 +188,8 @@ Code block
     try {
       const loaded = await window.mdb.loadSettings();
       appSettings = { ...appSettings, ...loaded };
+      appSettings.accentMode = inferAccentMode(loaded);
+      normalizeVisualSettings();
       recentFiles = Array.isArray(appSettings.recentFiles) ? appSettings.recentFiles : [];
       lineWrap = appSettings.lineWrap !== false;
       showLineNumbers = Boolean(appSettings.showLineNumbers);
@@ -160,18 +204,61 @@ Code block
 
   function applySettingsToDom() {
     const lightTheme = ["light", "github-light", "catppuccin-latte"].includes(appSettings.theme);
+    const theme = appSettings.theme || "dark";
+    const accent = getAppliedAccent();
     document.body.dataset.theme = appSettings.theme || "dark";
+    document.body.dataset.appDisplay = appSettings.appDisplay || "native-compact";
+    document.body.dataset.editorStyle = appSettings.editorStyle || "clean";
+    document.body.dataset.previewStyle = appSettings.previewStyle || "document";
+    document.body.dataset.density = appSettings.density || "comfortable";
+    document.body.dataset.syntaxMarkers = appSettings.syntaxMarkers || "fade";
     document.body.classList.toggle("light", lightTheme);
+    document.body.classList.remove(...themeClassNames);
+    document.body.classList.add(`theme-${theme}`);
     document.body.classList.toggle("glass", Boolean(appSettings.glass));
     document.body.classList.toggle("activity-pinned", activityRailVisible && activityOpen && activityPinned);
-    document.documentElement.style.setProperty("--accent", appSettings.accentColor || "#68d8c1");
+    document.documentElement.style.setProperty("--accent", accent);
+    document.body.style.setProperty("--accent", accent);
     document.documentElement.style.setProperty("--activity-pane-width", `${clamp(Number(appSettings.activityPaneWidth) || 280, 220, 520)}px`);
     document.documentElement.style.setProperty("--inspector-width", `${clamp(Number(appSettings.inspectorWidth) || 360, 280, 620)}px`);
-    document.documentElement.style.setProperty("--editor-font", `"${appSettings.editorFont || "Cascadia Code"}", "SFMono-Regular", Consolas, monospace`);
-    document.documentElement.style.setProperty("--preview-font", `"${appSettings.previewFont || "Segoe UI"}", Inter, ui-sans-serif, system-ui, sans-serif`);
+    document.documentElement.style.setProperty("--editor-font", buildFontStack(appSettings.editorFont, ["Cascadia Code", "Consolas", "Courier New", "monospace"]));
+    document.documentElement.style.setProperty("--preview-font", buildFontStack(appSettings.previewFont, ["Segoe UI", "Arial", "sans-serif"]));
     document.body.classList.toggle("activity-visible", activityRailVisible);
     activityToggleButton.classList.toggle("active", activityRailVisible);
     window.mdb.setTitlebarTheme(lightTheme ? "light" : "dark");
+  }
+
+  function normalizeVisualSettings() {
+    Object.entries(settingOptions).forEach(([setting, allowedValues]) => {
+      if (!allowedValues.includes(appSettings[setting])) {
+        appSettings[setting] = settingFallbacks[setting];
+      }
+    });
+    if (!["theme", "custom"].includes(appSettings.accentMode)) {
+      appSettings.accentMode = "theme";
+    }
+    if (appSettings.accentMode === "theme") {
+      appSettings.accentColor = themeDefaultAccents[appSettings.theme] || themeDefaultAccents.dark;
+    }
+  }
+
+  function getAppliedAccent() {
+    if (appSettings.accentMode === "custom") {
+      return appSettings.accentColor || themeDefaultAccents[appSettings.theme] || themeDefaultAccents.dark;
+    }
+    return themeDefaultAccents[appSettings.theme] || themeDefaultAccents.dark;
+  }
+
+  function inferAccentMode(loaded = {}) {
+    if (loaded.accentMode === "custom" || loaded.accentMode === "theme") return loaded.accentMode;
+    if (!loaded.accentColor) return "theme";
+    return Object.values(themeDefaultAccents).includes(loaded.accentColor) ? "theme" : "custom";
+  }
+
+  function buildFontStack(primary, fallbacks) {
+    const stack = [primary, ...fallbacks].filter(Boolean);
+    const unique = [...new Set(stack)];
+    return unique.map((font) => (font.includes(" ") ? `"${font}"` : font)).join(", ");
   }
 
   function queueSaveSettings() {
@@ -432,6 +519,8 @@ Code block
         lineWrapping: lineWrap,
         lineNumbers: showLineNumbers,
         fontSize: 15 * (getDocZoom(doc) / 100),
+        editorStyle: appSettings.editorStyle,
+        syntaxMarkers: appSettings.syntaxMarkers,
         onFocus: () => setActivePane(paneId, true),
         onChange: () => handlePaneInput(paneId, editor),
         onCursor: () => handlePaneCursor(paneId, editor),
@@ -579,6 +668,10 @@ Code block
     }
     node.textarea.setLineWrapping?.(lineWrap);
     node.textarea.setLineNumbers?.(showLineNumbers);
+    node.textarea.setEditorDisplay?.({
+      editorStyle: appSettings.editorStyle,
+      syntaxMarkers: appSettings.syntaxMarkers
+    });
     node.wrap?.classList.toggle("show-lines", showLineNumbers);
     node.wrap?.classList.toggle("no-wrap", !lineWrap);
     node.wrap?.style.setProperty("--editor-font-size", `${15 * (getDocZoom(doc) / 100)}px`);
@@ -916,28 +1009,80 @@ Code block
       <div class="settings-panel">
         <section class="settings-section">
           <h3>Appearance</h3>
-          <label class="settings-row">Theme
-            <select class="settings-select" data-setting="theme">
-              <option value="dark" ${appSettings.theme === "dark" ? "selected" : ""}>Cappuccino Dark</option>
-              <option value="light" ${appSettings.theme === "light" ? "selected" : ""}>Cappuccino Light</option>
-              <option value="vscode-dark" ${appSettings.theme === "vscode-dark" ? "selected" : ""}>VS Code Dark+</option>
-              <option value="github-light" ${appSettings.theme === "github-light" ? "selected" : ""}>GitHub Light</option>
-              <option value="catppuccin-mocha" ${appSettings.theme === "catppuccin-mocha" ? "selected" : ""}>Catppuccin Mocha</option>
-              <option value="catppuccin-latte" ${appSettings.theme === "catppuccin-latte" ? "selected" : ""}>Catppuccin Latte</option>
-            </select>
-          </label>
+          ${buildSettingsSelect("theme", "Theme", [
+            ["dark", "Cappuccino Dark"],
+            ["light", "Cappuccino Light"],
+            ["vscode-dark", "VS Code Dark+"],
+            ["github-light", "GitHub Light"],
+            ["catppuccin-mocha", "Catppuccin Mocha"],
+            ["catppuccin-latte", "Catppuccin Latte"]
+          ])}
+          ${buildSettingsSelect("appDisplay", "App display", [
+            ["native-compact", "Native Compact"],
+            ["glass-workspace", "Glass Workspace"],
+            ["writer-focus", "Writer Focus"],
+            ["technical-workspace", "Technical Workspace"],
+            ["minimal-paper", "Minimal Paper"]
+          ])}
+          ${buildSettingsSelect("density", "Density", [
+            ["compact", "Compact"],
+            ["comfortable", "Comfortable"],
+            ["spacious", "Spacious"]
+          ])}
           <label class="settings-row">Accent
-            <input type="color" data-setting="accentColor" value="${escapeHtml(appSettings.accentColor || "#68d8c1")}" />
+            <span class="settings-accent-control">
+              <input type="color" data-setting="accentColor" value="${escapeHtml(getAppliedAccent())}" />
+              <button type="button" data-settings-action="theme-accent" title="Use theme accent">Theme</button>
+            </span>
           </label>
         </section>
         <section class="settings-section">
           <h3>Editor</h3>
+          ${buildSettingsSelect("editorStyle", "Editor style", [
+            ["none", "None"],
+            ["clean", "Clean Markdown"],
+            ["obsidian", "Obsidian-like"],
+            ["vscode", "VS Code-like"],
+            ["minimal-writer", "Minimal Writer"],
+            ["technical", "Technical"]
+          ])}
+          ${buildSettingsSelect("syntaxMarkers", "Markdown punctuation", [
+            ["show", "Show"],
+            ["fade", "Fade"],
+            ["hide", "Hide outside cursor"]
+          ])}
+          ${buildSettingsSelect("editorFont", "Editor font", fontOptionsForSelect(editorFontOptions))}
           ${buildSettingsToggle("showFormattingToolbar", "Show formatting toolbar", appSettings.showFormattingToolbar)}
           ${buildSettingsToggle("showLineNumbers", "Show line numbers", showLineNumbers)}
           ${buildSettingsToggle("lineWrap", "Line wrap", lineWrap)}
           ${buildSettingsToggle("scrollSyncAllowed", "Allow scroll sync", false, true)}
         </section>
+        <section class="settings-section">
+          <h3>Preview</h3>
+          ${buildSettingsSelect("previewStyle", "Preview/export style", [
+            ["github", "GitHub"],
+            ["document", "Document"],
+            ["report", "Report"],
+            ["minimal", "Minimal"],
+            ["academic", "Academic"],
+            ["notion", "Notion-like"]
+          ])}
+          ${buildSettingsSelect("previewFont", "Preview/export font", fontOptionsForSelect(previewFontOptions))}
+        </section>
       </div>`;
+  }
+
+  function fontOptionsForSelect(fonts) {
+    return fonts.map((font) => [font, font]);
+  }
+
+  function buildSettingsSelect(setting, label, options) {
+    const value = appSettings[setting];
+    return `<label class="settings-row">${escapeHtml(label)}
+      <select class="settings-select" data-setting="${setting}">
+        ${options.map(([optionValue, optionLabel]) => `<option value="${escapeHtml(optionValue)}" ${value === optionValue ? "selected" : ""}>${escapeHtml(optionLabel)}</option>`).join("")}
+      </select>
+    </label>`;
   }
 
   function buildSettingsToggle(setting, label, checked, disabled = false) {
@@ -1505,13 +1650,22 @@ Code block
 
   function toggleTheme() {
     closeMenuPanel();
-    document.body.classList.toggle("light");
-    window.mdb.setTitlebarTheme(document.body.classList.contains("light") ? "light" : "dark");
+    const lightTheme = ["light", "github-light", "catppuccin-latte"].includes(appSettings.theme);
+    appSettings.theme = lightTheme ? "dark" : "light";
+    if (appSettings.accentMode !== "custom") {
+      appSettings.accentMode = "theme";
+      appSettings.accentColor = themeDefaultAccents[appSettings.theme] || themeDefaultAccents.dark;
+    }
+    applySettingsToDom();
+    updateAllPanes();
+    queueSaveSettings();
   }
 
   function toggleGlass() {
     closeMenuPanel();
-    document.body.classList.toggle("glass");
+    appSettings.glass = !appSettings.glass;
+    applySettingsToDom();
+    queueSaveSettings();
   }
 
   function toggleLineWrap() {
@@ -2659,6 +2813,19 @@ Code block
   }
 
   function handleActivityClick(event) {
+    const settingsButton = event.target.closest("[data-settings-action]");
+    if (settingsButton) {
+      if (settingsButton.dataset.settingsAction === "theme-accent") {
+        appSettings.accentMode = "theme";
+        appSettings.accentColor = themeDefaultAccents[appSettings.theme] || themeDefaultAccents.dark;
+        applySettingsToDom();
+        updateAllPanes();
+        queueSaveSettings();
+        if (!activityPane.hidden && activeActivity === "settings") renderSettingsActivity();
+        renderSettingsOverlay();
+      }
+      return;
+    }
     const lineButton = event.target.closest("[data-activity-line]");
     if (lineButton) {
       jumpActivePaneToLine(Number(lineButton.dataset.activityLine || 1));
@@ -2722,7 +2889,15 @@ Code block
     } else {
       appSettings[setting] = event.target.value;
     }
-    if (setting === "theme") appSettings.theme = event.target.value;
+    if (setting === "theme") {
+      appSettings.theme = event.target.value;
+      if (appSettings.accentMode !== "custom") {
+        appSettings.accentMode = "theme";
+        appSettings.accentColor = themeDefaultAccents[appSettings.theme] || themeDefaultAccents.dark;
+      }
+    }
+    if (setting === "accentColor") appSettings.accentMode = "custom";
+    normalizeVisualSettings();
     if (setting === "showLineNumbers") showLineNumbers = event.target.checked;
     if (setting === "lineWrap") lineWrap = event.target.checked;
     applySettingsToDom();
@@ -2865,6 +3040,7 @@ Code block
     activityResizeHandle.addEventListener("pointerdown", startActivityResize);
     inspectorResizeHandle.addEventListener("pointerdown", startInspectorResize);
     settingsOverlayCloseButton.addEventListener("click", closeSettingsOverlay);
+    settingsOverlay.addEventListener("click", handleActivityClick);
     settingsOverlay.addEventListener("input", handleSettingsOverlayInput);
     settingsOverlay.addEventListener("change", handleSettingsOverlayChange);
 

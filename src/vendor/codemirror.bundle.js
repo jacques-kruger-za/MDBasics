@@ -61986,21 +61986,27 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
   init_dist();
   init_dist2();
   var headingLine = Decoration.line({ class: "cm-md-heading-line" });
+  var quoteLine = Decoration.line({ class: "cm-md-quote-line" });
+  var codeLine = Decoration.line({ class: "cm-md-code-line" });
+  var tableLine = Decoration.line({ class: "cm-md-table-line" });
+  var thematicBreakLine = Decoration.line({ class: "cm-md-thematic-break-line" });
   function classMark(className2) {
     return Decoration.mark({ class: className2 });
   }
-  function hiddenSyntax(cursorInside) {
+  function syntaxMark(cursorInside, syntaxMarkers) {
+    if (syntaxMarkers === "show") return classMark("cm-md-syntax-visible");
     return classMark(cursorInside ? "cm-md-syntax-muted" : "cm-md-syntax-hidden");
   }
-  function markdownRichView() {
+  function markdownRichView(options = {}) {
+    const syntaxMarkers = ["show", "fade", "hide"].includes(options.syntaxMarkers) ? options.syntaxMarkers : "fade";
     return ViewPlugin.fromClass(
       class {
         constructor(view) {
-          this.decorations = buildDecorations(view);
+          this.decorations = buildDecorations(view, syntaxMarkers);
         }
         update(update) {
           if (update.docChanged || update.viewportChanged || update.selectionSet) {
-            this.decorations = buildDecorations(update.view);
+            this.decorations = buildDecorations(update.view, syntaxMarkers);
           }
         }
       },
@@ -62009,22 +62015,36 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
       }
     );
   }
-  function buildDecorations(view) {
+  function buildDecorations(view, syntaxMarkers) {
     const builder = new RangeSetBuilder();
     const cursor = view.state.selection.main.head;
+    let inFence = isInsideFenceBefore(view.state.doc, view.visibleRanges[0]?.from || 0);
     for (const { from: from3, to } of view.visibleRanges) {
       let pos = from3;
       while (pos <= to) {
         const line = view.state.doc.lineAt(pos);
-        decorateLine(builder, line, cursor);
+        inFence = decorateLine(builder, line, cursor, inFence, syntaxMarkers);
         if (line.to + 1 > to) break;
         pos = line.to + 1;
       }
     }
     return builder.finish();
   }
-  function decorateLine(builder, line, cursor) {
+  function decorateLine(builder, line, cursor, inFence, syntaxMarkers) {
     const text5 = line.text;
+    const fence = text5.match(/^(\s*)(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      builder.add(line.from, line.from, codeLine);
+      addLeadingWhitespace(builder, line, fence[1].length);
+      builder.add(line.from + fence[1].length, line.from + fence[1].length + fence[2].length, classMark("cm-md-code-fence"));
+      if (fence[3]) builder.add(line.from + fence[1].length + fence[2].length, line.to, classMark("cm-md-code-info"));
+      return !inFence;
+    }
+    if (inFence) {
+      builder.add(line.from, line.from, codeLine);
+      if (line.length) builder.add(line.from, line.to, classMark("cm-md-code-content"));
+      return inFence;
+    }
     const heading2 = text5.match(/^(#{1,6})(\s+)(.*)$/);
     if (heading2) {
       builder.add(line.from, line.from, headingLine);
@@ -62032,28 +62052,80 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
       const level = Math.min(6, heading2[1].length);
       builder.add(line.from + heading2[1].length + heading2[2].length, line.to, classMark(`cm-md-heading cm-md-heading-${level}`));
     }
-    addInlineMatches(builder, line, cursor, /\*\*([^*\n]+)\*\*/g, "cm-md-bold", 2, 2);
-    addInlineMatches(builder, line, cursor, /(?<!\*)_([^_\n]+)_/g, "cm-md-italic", 1, 1);
-    addInlineMatches(builder, line, cursor, /(?<!\*)\*([^*\n]+)\*/g, "cm-md-italic", 1, 1);
-    addInlineMatches(builder, line, cursor, /`([^`\n]+)`/g, "cm-md-inline-code", 1, 1);
+    const quote2 = text5.match(/^(\s*>+\s?)(.*)$/);
+    if (quote2) {
+      builder.add(line.from, line.from, quoteLine);
+      builder.add(line.from, line.from + quote2[1].length, classMark("cm-md-quote-marker"));
+      if (quote2[2]) builder.add(line.from + quote2[1].length, line.to, classMark("cm-md-quote-content"));
+    }
+    const list2 = text5.match(/^(\s*)([-+*]|\d+[.)])(\s+)(.*)$/);
+    if (list2) {
+      addLeadingWhitespace(builder, line, list2[1].length);
+      const markerStart = line.from + list2[1].length;
+      builder.add(markerStart, markerStart + list2[2].length, classMark("cm-md-list-marker"));
+    }
+    if (isTableLike(text5)) {
+      builder.add(line.from, line.from, tableLine);
+      addTableMarks(builder, line);
+    }
+    if (/^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/.test(text5)) {
+      builder.add(line.from, line.from, thematicBreakLine);
+      builder.add(line.from, line.to, classMark("cm-md-thematic-break"));
+    }
+    addInlineMatches(builder, line, cursor, /\*\*([^*\n]+)\*\*/g, "cm-md-bold", 2, 2, syntaxMarkers);
+    addInlineMatches(builder, line, cursor, /__([^_\n]+)__/g, "cm-md-bold", 2, 2, syntaxMarkers);
+    addInlineMatches(builder, line, cursor, /(?<!\*)_([^_\n]+)_/g, "cm-md-italic", 1, 1, syntaxMarkers);
+    addInlineMatches(builder, line, cursor, /(?<!\*)\*([^*\n]+)\*/g, "cm-md-italic", 1, 1, syntaxMarkers);
+    addInlineMatches(builder, line, cursor, /~~([^~\n]+)~~/g, "cm-md-strikethrough", 2, 2, syntaxMarkers);
+    addInlineMatches(builder, line, cursor, /`([^`\n]+)`/g, "cm-md-inline-code", 1, 1, syntaxMarkers);
+    return inFence;
   }
-  function addInlineMatches(builder, line, cursor, regex, contentClass, openLength, closeLength) {
+  function addInlineMatches(builder, line, cursor, regex, contentClass, openLength, closeLength, syntaxMarkers) {
     for (const match2 of line.text.matchAll(regex)) {
       const start2 = line.from + match2.index;
       const end2 = start2 + match2[0].length;
       const contentStart = start2 + openLength;
       const contentEnd = end2 - closeLength;
       const cursorInside = cursor >= start2 && cursor <= end2;
-      builder.add(start2, contentStart, hiddenSyntax(cursorInside));
+      builder.add(start2, contentStart, syntaxMark(cursorInside, syntaxMarkers));
       builder.add(contentStart, contentEnd, classMark(contentClass));
-      builder.add(contentEnd, end2, hiddenSyntax(cursorInside));
+      builder.add(contentEnd, end2, syntaxMark(cursorInside, syntaxMarkers));
     }
+  }
+  function addLeadingWhitespace(builder, line, length) {
+    if (length > 0) builder.add(line.from, line.from + length, classMark("cm-md-indent"));
+  }
+  function isTableLike(text5) {
+    const trimmed = text5.trim();
+    return trimmed.includes("|") && trimmed.length > 1;
+  }
+  function addTableMarks(builder, line) {
+    for (let offset = 0; offset < line.text.length; offset += 1) {
+      if (line.text[offset] === "|") {
+        builder.add(line.from + offset, line.from + offset + 1, classMark("cm-md-table-delimiter"));
+      }
+    }
+    if (/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line.text)) {
+      builder.add(line.from, line.to, classMark("cm-md-table-rule"));
+    }
+  }
+  function isInsideFenceBefore(doc2, position) {
+    let inFence = false;
+    let pos = 0;
+    while (pos < position) {
+      const line = doc2.lineAt(pos);
+      if (/^\s*(`{3,}|~{3,})/.test(line.text)) inFence = !inFence;
+      if (line.to + 1 >= position) break;
+      pos = line.to + 1;
+    }
+    return inFence;
   }
 
   // src/codemirror-entry.js
   var wrapCompartment = new Compartment();
   var gutterCompartment = new Compartment();
   var zoomCompartment = new Compartment();
+  var displayCompartment = new Compartment();
   var mdbTheme = EditorView.theme(
     {
       "&": {
@@ -62143,6 +62215,158 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
       }
     });
   }
+  function editorDisplayExtension(options = {}) {
+    const editorStyle = ["none", "clean", "obsidian", "vscode", "minimal-writer", "technical"].includes(options.editorStyle) ? options.editorStyle : "clean";
+    const syntaxMarkers = ["show", "fade", "hide"].includes(options.syntaxMarkers) ? options.syntaxMarkers : "fade";
+    if (editorStyle === "none") {
+      return [
+        EditorView.theme({
+          ".cm-md-heading, .cm-md-bold, .cm-md-italic, .cm-md-strikethrough, .cm-md-inline-code, .cm-md-code-content, .cm-md-quote-content": {
+            font: "inherit",
+            color: "inherit",
+            backgroundColor: "transparent",
+            border: "0",
+            padding: "0",
+            textDecoration: "inherit"
+          },
+          ".cm-md-syntax-muted, .cm-md-syntax-hidden, .cm-md-syntax-visible": {
+            opacity: "1",
+            color: "inherit"
+          }
+        })
+      ];
+    }
+    return [markdownRichView({ syntaxMarkers }), EditorView.theme(editorDisplayRules(editorStyle, syntaxMarkers))];
+  }
+  function editorDisplayRules(editorStyle, syntaxMarkers) {
+    const hiddenOpacity = syntaxMarkers === "hide" || editorStyle === "minimal-writer" ? "0.035" : "0.16";
+    const visibleMarker = syntaxMarkers === "show" || editorStyle === "vscode" || editorStyle === "technical";
+    const rules = {
+      ".cm-md-syntax-visible, .cm-md-syntax-visible *": {
+        color: "var(--muted)",
+        opacity: "1"
+      },
+      ".cm-md-syntax-muted, .cm-md-syntax-muted *": {
+        color: "color-mix(in srgb, var(--muted) 70%, transparent)",
+        opacity: visibleMarker ? "1" : "0.72"
+      },
+      ".cm-md-syntax-hidden, .cm-md-syntax-hidden *": {
+        color: "color-mix(in srgb, var(--muted) 54%, transparent)",
+        opacity: visibleMarker ? "1" : hiddenOpacity
+      },
+      ".cm-md-indent": {
+        opacity: "0.55"
+      },
+      ".cm-md-bold, .cm-md-bold *": {
+        fontWeight: "760",
+        color: "color-mix(in srgb, var(--text-normal) 90%, var(--interactive-accent))"
+      },
+      ".cm-md-italic, .cm-md-italic *": {
+        fontStyle: "italic",
+        color: "color-mix(in srgb, var(--text-normal) 92%, var(--interactive-accent))"
+      },
+      ".cm-md-strikethrough, .cm-md-strikethrough *": {
+        textDecoration: "line-through",
+        color: "color-mix(in srgb, var(--text-normal) 76%, var(--text-muted))"
+      },
+      ".cm-md-inline-code, .cm-md-inline-code *": {
+        padding: "0 3px",
+        borderRadius: "4px",
+        backgroundColor: "var(--code-background)",
+        color: "color-mix(in srgb, var(--interactive-accent) 72%, var(--text-normal))",
+        fontFamily: "var(--editor-font)"
+      },
+      ".cm-md-heading-line": {
+        color: "var(--text-normal)"
+      },
+      ".cm-md-heading-marker, .cm-md-heading-marker *": {
+        color: "color-mix(in srgb, var(--text-muted) 50%, transparent)"
+      },
+      ".cm-md-heading, .cm-md-heading *": {
+        fontWeight: "780",
+        color: "var(--text-normal)"
+      },
+      ".cm-md-heading-1, .cm-md-heading-1 *": {
+        fontSize: "1.55em"
+      },
+      ".cm-md-heading-2, .cm-md-heading-2 *": {
+        fontSize: "1.32em"
+      },
+      ".cm-md-heading-3, .cm-md-heading-3 *": {
+        fontSize: "1.16em"
+      },
+      ".cm-md-quote-line": {
+        backgroundColor: "color-mix(in srgb, var(--interactive-accent) 4%, transparent)"
+      },
+      ".cm-md-quote-marker, .cm-md-quote-marker *": {
+        color: "var(--interactive-accent)",
+        fontWeight: "700"
+      },
+      ".cm-md-quote-content, .cm-md-quote-content *": {
+        color: "color-mix(in srgb, var(--text-normal) 78%, var(--text-muted))"
+      },
+      ".cm-md-list-marker, .cm-md-list-marker *": {
+        color: "var(--interactive-accent)",
+        fontWeight: "720"
+      },
+      ".cm-md-code-line": {
+        backgroundColor: "color-mix(in srgb, var(--code-background) 70%, transparent)"
+      },
+      ".cm-md-code-fence, .cm-md-code-fence *, .cm-md-code-info, .cm-md-code-info *": {
+        color: "color-mix(in srgb, var(--interactive-accent) 64%, var(--text-muted))"
+      },
+      ".cm-md-code-content, .cm-md-code-content *": {
+        color: "color-mix(in srgb, var(--text-normal) 82%, var(--text-muted))"
+      },
+      ".cm-md-table-line": {
+        backgroundColor: "color-mix(in srgb, var(--table-header-background) 40%, transparent)"
+      },
+      ".cm-md-table-delimiter, .cm-md-table-delimiter *": {
+        color: "color-mix(in srgb, var(--interactive-accent) 66%, var(--text-muted))"
+      },
+      ".cm-md-table-rule, .cm-md-table-rule *": {
+        color: "color-mix(in srgb, var(--text-muted) 70%, transparent)"
+      },
+      ".cm-md-thematic-break, .cm-md-thematic-break *": {
+        color: "color-mix(in srgb, var(--interactive-accent) 58%, var(--text-muted))"
+      }
+    };
+    if (editorStyle === "obsidian") {
+      rules[".cm-md-heading, .cm-md-heading *"] = {
+        fontWeight: "760",
+        color: "color-mix(in srgb, var(--interactive-accent) 28%, var(--text-normal))"
+      };
+      rules[".cm-md-inline-code, .cm-md-inline-code *"].backgroundColor = "color-mix(in srgb, var(--interactive-accent) 14%, transparent)";
+      rules[".cm-md-inline-code, .cm-md-inline-code *"].border = "1px solid color-mix(in srgb, var(--interactive-accent) 18%, transparent)";
+    }
+    if (editorStyle === "vscode") {
+      rules[".cm-md-bold, .cm-md-bold *"].color = "#dcdcaa";
+      rules[".cm-md-italic, .cm-md-italic *"].color = "#ce9178";
+      rules[".cm-md-inline-code, .cm-md-inline-code *"].color = "#4ec9b0";
+      rules[".cm-md-heading, .cm-md-heading *"].color = "color-mix(in srgb, #569cd6 72%, var(--text-normal))";
+      rules[".cm-md-code-content, .cm-md-code-content *"].color = "#d4d4d4";
+    }
+    if (editorStyle === "minimal-writer") {
+      rules[".cm-md-heading, .cm-md-heading *"] = {
+        fontFamily: "var(--preview-font)",
+        fontWeight: "680",
+        color: "var(--text-normal)"
+      };
+      rules[".cm-md-quote-line"].backgroundColor = "transparent";
+      rules[".cm-md-table-line"].backgroundColor = "transparent";
+      rules[".cm-md-code-line"].backgroundColor = "transparent";
+    }
+    if (editorStyle === "technical") {
+      rules[".cm-gutters"] = {
+        backgroundColor: "color-mix(in srgb, var(--surface-raised) 22%, transparent)",
+        borderRight: "1px solid var(--subtle-hairline)"
+      };
+      rules[".cm-md-inline-code, .cm-md-inline-code *"].border = "1px solid color-mix(in srgb, var(--interactive-accent) 22%, var(--line))";
+      rules[".cm-md-inline-code, .cm-md-inline-code *"].backgroundColor = "color-mix(in srgb, var(--app-bg) 66%, var(--interactive-accent) 6%)";
+      rules[".cm-md-table-line"].backgroundColor = "color-mix(in srgb, var(--interactive-accent) 6%, transparent)";
+    }
+    return rules;
+  }
   function createMarkdownEditor(options) {
     const parent = options.parent;
     let applyingExternalUpdate = false;
@@ -62164,7 +62388,6 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
           indentOnInput(),
           bracketMatching(),
           closeBrackets({ brackets: ["(", "[", "{", "'", '"'] }),
-          markdownRichView(),
           EditorView.domEventHandlers({
             keydown: (event) => options.onKeydown?.(event) === true
           }),
@@ -62181,6 +62404,10 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
           wrapCompartment.of(lineWrappingExtension(options.lineWrapping !== false)),
           gutterCompartment.of(lineNumberExtension(Boolean(options.lineNumbers))),
           zoomCompartment.of(zoomExtension(options.fontSize)),
+          displayCompartment.of(editorDisplayExtension({
+            editorStyle: options.editorStyle,
+            syntaxMarkers: options.syntaxMarkers
+          })),
           EditorView.updateListener.of((update) => {
             if (applyingExternalUpdate) return;
             if (update.docChanged) options.onChange?.(getApi().getValue());
@@ -62291,6 +62518,9 @@ ${getContinuationPrefix(doc2, cursor)}` : isDoubleSpaceExit ? " " : "";
         },
         setFontSize(fontSize) {
           view.dispatch({ effects: zoomCompartment.reconfigure(zoomExtension(fontSize)) });
+        },
+        setEditorDisplay(options2 = {}) {
+          view.dispatch({ effects: displayCompartment.reconfigure(editorDisplayExtension(options2)) });
         }
       };
       Object.defineProperties(api, {
